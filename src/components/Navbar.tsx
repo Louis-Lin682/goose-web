@@ -574,25 +574,13 @@ export const Navbar = () => {
 
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
-            className="fixed inset-0 z-[105] bg-black/32 backdrop-blur-[2px] md:hidden"
-            onClick={closeAll}
-          >
+          <div className="fixed inset-0 z-[105] bg-black/40 md:hidden" onClick={closeAll}>
             <motion.aside
-              initial={{ x: "104%", opacity: 0.94, scale: 0.985 }}
-              animate={{ x: ["104%", "-2.5%", "0%"], opacity: [0.94, 1, 1], scale: [0.985, 1.004, 1] }}
-              exit={{ x: ["0%", "1.5%", "100%"], opacity: [1, 0.98, 0.96], scale: [1, 0.998, 0.992] }}
-              transition={{
-                x: { duration: 0.34, ease: [0.22, 1, 0.36, 1] },
-                opacity: { duration: 0.22 },
-                scale: { duration: 0.34, ease: [0.22, 1, 0.36, 1] },
-              }}
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
               onClick={(event) => event.stopPropagation()}
-              className="ml-auto flex h-full w-[86vw] max-w-sm transform-gpu flex-col bg-white/96 px-6 pb-8 pt-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)] will-change-transform"
+              className="ml-auto flex h-full w-[86vw] max-w-sm flex-col bg-white px-6 pb-8 pt-6 shadow-xl"
             >
               <div className="mb-8 flex items-center justify-between">
                 <div>
@@ -651,7 +639,7 @@ export const Navbar = () => {
                 </Button>
               </div>
             </motion.aside>
-          </motion.div>
+          </div>
         )}
 
         {isNoticeOpen && <NoticeModal onClose={() => setIsNoticeOpen(false)} />}
