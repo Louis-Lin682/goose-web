@@ -3,6 +3,10 @@
     {
       "source": "/api/(.*)",
       "destination": "https://goose-api.onrender.com/$1"
+    },
+    {
+      "source": "/((?!api/|assets/|image/|favicon\\.svg|.*\\..*).*)",
+      "destination": "/index.html"
     }
   ]
 }
