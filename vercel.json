@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://goose-api.onrender.com/$1"
+    }
+  ]
+}
