@@ -76,6 +76,7 @@ export const Orders = () => {
 
     if (!isAuthenticated) {
       setOrders([]);
+      setExpandedOrderId(null);
       setIsLoading(false);
       return;
     }
@@ -126,7 +127,7 @@ export const Orders = () => {
     return (
       <main className="min-h-screen bg-white px-6 pb-24 pt-40">
         <div className="mx-auto max-w-5xl rounded-[2rem] border border-zinc-100 bg-zinc-50 px-8 py-16 text-center">
-          <p className="text-sm text-zinc-500">正在載入會員資料...</p>
+          <p className="text-sm text-zinc-500">正在確認登入狀態...</p>
         </div>
       </main>
     );
@@ -156,7 +157,7 @@ export const Orders = () => {
               to="/store"
               className="inline-flex rounded-full border border-zinc-200 px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-white"
             >
-              門市資訊
+              查看門市資訊
             </Link>
           </div>
         </div>
@@ -193,7 +194,7 @@ export const Orders = () => {
           <div className="rounded-[2rem] border border-dashed border-zinc-200 bg-zinc-50 px-8 py-16 text-center">
             <p className="text-2xl font-bold text-zinc-900">目前還沒有訂單</p>
             <p className="mt-3 text-sm text-zinc-500">
-              先到產品列表挑選商品，完成結帳後就能在這裡查看進度。
+              先到產品列表挑選商品，完成結帳後就能在這裡查看最新訂單。
             </p>
             <Link
               to="/fullMenu"
@@ -364,7 +365,7 @@ export const Orders = () => {
                               </div>
                               <div>
                                 <p className="text-xs font-bold uppercase tracking-[0.28em] text-white/45">
-                                  電話
+                                  聯絡電話
                                 </p>
                                 <p className="mt-2 font-semibold text-white">
                                   {order.recipientPhone}
@@ -414,7 +415,7 @@ export const Orders = () => {
                                 <span>{formatCurrency(order.codFee)}</span>
                               </div>
                               <div className="flex items-center justify-between border-t border-white/10 pt-3 text-base font-bold">
-                                <span>應付合計</span>
+                                <span>訂單總額</span>
                                 <span>{formatCurrency(order.totalAmount)}</span>
                               </div>
                             </div>
