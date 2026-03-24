@@ -97,3 +97,33 @@ export type UpdateOrderStatusResponse = {
   orderId: string;
   status: OrderStatus;
 };
+
+export type AdminProductStatsPreset =
+  | "today"
+  | "this-month"
+  | "last-month"
+  | "custom";
+
+export type AdminProductStatPoint = {
+  productKey: string;
+  productName: string;
+  category: string;
+  subCategory: string;
+  variant: string;
+  quantitySold: number;
+  revenue: number;
+  orderCount: number;
+};
+
+export type AdminProductStatsResponse = {
+  range: {
+    preset: AdminProductStatsPreset;
+    label: string;
+    startDate: string;
+    endDate: string;
+  };
+  totalRevenue: number;
+  totalOrders: number;
+  totalItemsSold: number;
+  topProducts: AdminProductStatPoint[];
+};

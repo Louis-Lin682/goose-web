@@ -1,11 +1,15 @@
 import { apiRequest } from "./api";
 import type {
   CurrentUserResponse,
+  ForgotPasswordPayload,
+  ForgotPasswordResponse,
   LoginPayload,
   LoginResponse,
   LogoutResponse,
   RegisterPayload,
   RegisterResponse,
+  ResetPasswordPayload,
+  ResetPasswordResponse,
 } from "../types/auth";
 
 export const register = async (
@@ -34,4 +38,35 @@ export const logout = async (): Promise<LogoutResponse> => {
   return apiRequest<LogoutResponse>("/auth/logout", {
     method: "POST",
   });
+};
+
+export const forgotPassword = async (
+  payload: ForgotPasswordPayload,
+): Promise<ForgotPasswordResponse> => {
+  return apiRequest<ForgotPasswordResponse>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
+export const resetPassword = async (
+  payload: ResetPasswordPayload,
+): Promise<ResetPasswordResponse> => {
+  return apiRequest<ResetPasswordResponse>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
+export const getLineAuthStartUrl = (
+  mode: "login" | "register" = "login",
+): string => {
+  const encodedMode = encodeURIComponent(mode);
+
+  if (import.meta.env.PROD) {
+    return `/api/auth/line/start?mode=${encodedMode}`;
+  }
+
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/$/, "");
+  return `${baseUrl}/auth/line/start?mode=${encodedMode}`;
 };

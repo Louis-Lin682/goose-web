@@ -8,8 +8,8 @@ import { useCart } from "../context/useCart";
 
 const variantLabels: Record<string, string> = {
   single: "單一規格",
-  small: "小",
-  large: "大",
+  small: "小份",
+  large: "大份",
 };
 
 const DESKTOP_SCROLL_THRESHOLD = 2;
@@ -18,16 +18,16 @@ const MOBILE_COLLAPSED_COUNT = 3;
 const formatCurrency = (value: number) => `$${value}`;
 
 export const Cart = () => {
-  const {
-    cart,
-    totalItems,
-    updateCartItemQuantity,
-    removeCartItem,
-  } = useCart();
+  const { cart, totalItems, updateCartItemQuantity, removeCartItem } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [isAuthPromptOpen, setIsAuthPromptOpen] = useState(false);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<{
+    id: string;
+    name: string;
+    selectedVariant: string;
+  } | null>(null);
 
   const subtotal = cart.reduce((sum, item) => sum + item.finalPrice * item.quantity, 0);
   const visibleMobileItems = cart.slice(0, MOBILE_COLLAPSED_COUNT);
@@ -50,6 +50,10 @@ export const Cart = () => {
     quantity: number,
   ) => {
     updateCartItemQuantity(itemId, selectedVariant, quantity);
+  };
+
+  const requestDeleteItem = (itemId: string, name: string, selectedVariant: string) => {
+    setPendingDeleteItem({ id: itemId, name, selectedVariant });
   };
 
   const renderQuantityControls = (
@@ -100,9 +104,9 @@ export const Cart = () => {
 
         {cart.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-zinc-200 bg-zinc-50 px-8 py-16 text-center">
-            <p className="text-2xl font-bold text-zinc-900">購物車目前是空的</p>
+            <p className="text-2xl font-bold text-zinc-900">購物車目前沒有商品</p>
             <p className="mt-3 text-sm text-zinc-500">
-              先到產品列表挑選商品，加入購物車後就能回來整理訂單。
+              先到產品列表挑選喜歡的商品，再回來完成結帳流程。
             </p>
             <Link
               to="/fullMenu"
@@ -142,7 +146,9 @@ export const Cart = () => {
 
                         <button
                           type="button"
-                          onClick={() => removeCartItem(item.id, item.selectedVariant)}
+                          onClick={() =>
+                            requestDeleteItem(item.id, item.name, item.selectedVariant)
+                          }
                           className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 text-zinc-500 transition-colors hover:border-red-200 hover:text-red-500"
                           aria-label="刪除商品"
                         >
@@ -193,7 +199,7 @@ export const Cart = () => {
               <h2 className="mt-3 text-3xl font-black">訂單摘要</h2>
 
               <div className="mt-6 border-t border-white/10 pt-6 lg:hidden">
-                <p className="mb-3 text-sm font-semibold text-white">訂單內容</p>
+                <p className="mb-3 text-sm font-semibold text-white">商品明細</p>
 
                 <div className="space-y-3">
                   {visibleMobileItems.map((item) => {
@@ -221,7 +227,9 @@ export const Cart = () => {
                           {renderQuantityControls(item.id, item.selectedVariant, item.quantity)}
                           <button
                             type="button"
-                            onClick={() => removeCartItem(item.id, item.selectedVariant)}
+                            onClick={() =>
+                              requestDeleteItem(item.id, item.name, item.selectedVariant)
+                            }
                             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white/70 transition-colors hover:border-red-300 hover:text-red-200"
                             aria-label="刪除商品"
                           >
@@ -272,7 +280,9 @@ export const Cart = () => {
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => removeCartItem(item.id, item.selectedVariant)}
+                                  onClick={() =>
+                                    requestDeleteItem(item.id, item.name, item.selectedVariant)
+                                  }
                                   className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white/70 transition-colors hover:border-red-300 hover:text-red-200"
                                   aria-label="刪除商品"
                                 >
@@ -294,7 +304,7 @@ export const Cart = () => {
                       onClick={() => setIsMobileExpanded((prev) => !prev)}
                       className="text-sm font-semibold text-orange-300 transition-colors hover:text-orange-200"
                     >
-                      {isMobileExpanded ? "收合" : "展開"}
+                      {isMobileExpanded ? "收合明細" : "展開更多"}
                     </button>
                   </div>
                 )}
@@ -302,11 +312,11 @@ export const Cart = () => {
 
               <div className="mt-8 space-y-4 border-t border-white/10 pt-6">
                 <div className="flex items-center justify-between text-sm text-white/70">
-                  <span>商品總數</span>
+                  <span>商品數量</span>
                   <span>{totalItems}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-white/70">
-                  <span>商品金額</span>
+                  <span>商品總額</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between border-t border-white/10 pt-4 text-lg font-bold">
@@ -349,6 +359,43 @@ export const Cart = () => {
             </Button>
           }
         />
+      )}
+
+      {pendingDeleteItem && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 px-6">
+          <div className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.35em] text-orange-600">
+              Cart
+            </p>
+            <h3 className="mt-3 text-2xl font-black text-zinc-900">確認刪除商品</h3>
+            <p className="mt-4 text-sm leading-7 text-zinc-600">
+              確定要把「{pendingDeleteItem.name}」從購物車移除嗎？刪除後需要重新加入才會再出現在訂單內。
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Button
+                type="button"
+                onClick={() => {
+                  removeCartItem(
+                    pendingDeleteItem.id,
+                    pendingDeleteItem.selectedVariant,
+                  );
+                  setPendingDeleteItem(null);
+                }}
+                className="h-11 p-2 flex-1 rounded-full bg-red-600 text-sm text-white hover:bg-red-700"
+              >
+                確認刪除
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPendingDeleteItem(null)}
+                className="h-11 p-2 flex-1 rounded-full border-zinc-200 text-sm text-zinc-900 hover:bg-zinc-100"
+              >
+                取消
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

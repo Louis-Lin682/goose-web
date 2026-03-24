@@ -422,10 +422,10 @@ export const AdminProducts = () => {
           <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
             Admin
           </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-zinc-900 md:text-6xl">
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
             沒有權限查看商品管理
           </h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-500">
+          <p className="mt-3 text-sm leading-6 text-zinc-500">
             請使用管理員帳號登入後，再進入後台商品管理頁面。          </p>
         </div>
       </main>
@@ -436,15 +436,15 @@ export const AdminProducts = () => {
     <main className="min-h-screen bg-white px-6 pb-24 pt-40 lg:h-full lg:overflow-hidden lg:pb-10 lg:pt-10">
       <div className="mx-auto max-w-6xl lg:flex lg:h-full lg:flex-col">
         <div className="shrink-0">
-          <div className="mb-12 flex flex-col gap-6 border-b border-zinc-100 pb-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mb-8 flex flex-col gap-4 border-b border-zinc-100 pb-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
                 Admin
               </p>
-              <h1 className="mt-4 text-4xl font-black tracking-tight text-zinc-900 md:text-6xl">
+              <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
                 商品管理
               </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-500">
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
                 在這裡可以調整分類排序、商品內容與價格。前台產品列表會直接跟著後台商品資料同步更新。
               </p>
             </div>

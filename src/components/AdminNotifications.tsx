@@ -91,10 +91,10 @@ export const AdminNotifications = () => {
           <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
             Admin
           </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-zinc-900 md:text-6xl">
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
             請先登入後台帳號
           </h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-500">
+          <p className="mt-3 text-sm leading-6 text-zinc-500">
             後台通知只提供管理員查看，請先登入後再回來。
           </p>
         </div>
@@ -109,10 +109,10 @@ export const AdminNotifications = () => {
           <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
             Admin
           </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-zinc-900 md:text-6xl">
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
             你沒有後台權限
           </h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-500">
+          <p className="mt-3 text-sm leading-6 text-zinc-500">
             目前登入身分不是管理員，所以無法查看新訂單通知。
           </p>
         </div>
@@ -124,15 +124,15 @@ export const AdminNotifications = () => {
     <main className="min-h-screen bg-white px-6 pb-24 pt-40 lg:h-full lg:overflow-hidden lg:pb-10 lg:pt-10">
       <div className="mx-auto max-w-6xl lg:flex lg:h-full lg:flex-col">
         <div className="shrink-0">
-        <div className="mb-12 flex flex-col gap-6 border-b border-zinc-100 pb-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mb-8 flex flex-col gap-4 border-b border-zinc-100 pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
               Admin
             </p>
-            <h1 className="mt-4 text-4xl font-black tracking-tight text-zinc-900 md:text-6xl">
+            <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
               新訂單通知
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-500">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
               這裡會集中顯示最新訂單提醒，未讀和已讀通知會分開呈現，方便你快速處理新單。
             </p>
           </div>

@@ -12,10 +12,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
+  const hydrateUser = async () => {
+    try {
+      const response = await getCurrentUser();
+      setUser(response.user);
+    } catch {
+      setUser(null);
+    } finally {
+      setIsAuthReady(true);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
 
-    const hydrateUser = async () => {
+    const hydrateUserSafely = async () => {
       try {
         const response = await getCurrentUser();
 
@@ -37,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    void hydrateUser();
+    void hydrateUserSafely();
 
     return () => {
       isMounted = false;
@@ -56,6 +67,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       signOut: () => {
         setUser(null);
         setIsAuthReady(true);
+      },
+      refreshUser: async () => {
+        await hydrateUser();
       },
     }),
     [isAuthReady, user],

@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "../context/useAuth";
 import { useAdminNotifications } from "../context/useAdminNotifications";
 import { useCart } from "../context/useCart";
-import { login as loginUser, logout as logoutUser, register as registerUser } from "../lib/auth";
+import {
+  getLineAuthStartUrl,
+  getCurrentUser,
+  login as loginUser,
+  logout as logoutUser,
+  register as registerUser,
+} from "../lib/auth";
 import type { LoginPayload, RegisterPayload } from "../types/auth";
 
 type AuthMode = "login" | "register";
@@ -75,6 +81,9 @@ const LineAuthButton = ({ mode }: { mode: AuthMode }) => (
 
     <button
       type="button"
+      onClick={() => {
+        window.location.assign(getLineAuthStartUrl(mode));
+      }}
       className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-[#06C755] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#05b24b]"
     >
       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[10px] font-black tracking-[0.16em] text-[#06C755]">
@@ -228,6 +237,7 @@ const AuthModal = ({
   onClose: () => void;
   onLoginSuccess: (isAdmin: boolean) => void;
 }) => {
+  const navigate = useNavigate();
   const { signIn } = useAuth();
   const [loginForm, setLoginForm] = useState<LoginFormState>(initialLoginForm);
   const [registerForm, setRegisterForm] = useState<RegisterFormState>(initialRegisterForm);
@@ -327,9 +337,15 @@ const AuthModal = ({
         throw new Error("登入成功，但未取得會員資料。");
       }
 
-      signIn(response.user);
+      const currentUserResponse = await getCurrentUser();
+
+      if (!currentUserResponse.user) {
+        throw new Error("登入狀態未建立成功，請重新登入一次。");
+      }
+
+      signIn(currentUserResponse.user);
       resetForms();
-      onLoginSuccess(response.user.isAdmin);
+      onLoginSuccess(currentUserResponse.user.isAdmin);
     } catch (error) {
       setAuthFeedback({
         type: "error",
@@ -464,7 +480,14 @@ const AuthModal = ({
                       />
                       記住我
                     </label>
-                    <button type="button" className="font-semibold text-orange-600">
+                    <button
+                      type="button"
+                      className="font-semibold text-orange-600"
+                      onClick={() => {
+                        handleClose();
+                        navigate("/forgot-password");
+                      }}
+                    >
                       忘記密碼？
                     </button>
                   </div>

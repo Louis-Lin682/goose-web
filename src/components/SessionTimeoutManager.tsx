@@ -1,0 +1,211 @@
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/useAuth";
+import { logout as logoutUser } from "../lib/auth";
+
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const ACTIVITY_THROTTLE_MS = 15 * 1000;
+const ACTIVITY_STORAGE_KEY = "goose_last_activity_at";
+
+const readLastActivity = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const value = window.localStorage.getItem(ACTIVITY_STORAGE_KEY);
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const writeLastActivity = (timestamp: number) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(ACTIVITY_STORAGE_KEY, `${timestamp}`);
+};
+
+const clearLastActivity = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(ACTIVITY_STORAGE_KEY);
+};
+
+export const SessionTimeoutManager = () => {
+  const navigate = useNavigate();
+  const { isAuthReady, isAuthenticated, signOut } = useAuth();
+  const [isTimeoutModalOpen, setIsTimeoutModalOpen] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  const lastPersistedRef = useRef(0);
+  const isHandlingTimeoutRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (!isAuthReady) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      clearLastActivity();
+      isHandlingTimeoutRef.current = false;
+      return;
+    }
+
+    const persistActivity = (force = false) => {
+      const now = Date.now();
+
+      if (!force && now - lastPersistedRef.current < ACTIVITY_THROTTLE_MS) {
+        return;
+      }
+
+      lastPersistedRef.current = now;
+      writeLastActivity(now);
+    };
+
+    const scheduleTimeout = () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+      }
+
+      const lastActivity = readLastActivity() ?? Date.now();
+      const remaining = IDLE_TIMEOUT_MS - (Date.now() - lastActivity);
+
+      if (remaining <= 0) {
+        void handleIdleTimeout();
+        return;
+      }
+
+      timerRef.current = window.setTimeout(() => {
+        void handleIdleTimeout();
+      }, remaining);
+    };
+
+    const handleIdleTimeout = async () => {
+      if (isHandlingTimeoutRef.current) {
+        return;
+      }
+
+      isHandlingTimeoutRef.current = true;
+
+      try {
+        await logoutUser();
+      } catch {
+        // Ignore network errors here; local logout still matters for UX.
+      } finally {
+        signOut();
+        clearLastActivity();
+        setIsTimeoutModalOpen(true);
+        if (timerRef.current) {
+          window.clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+      }
+    };
+
+    const markActivity = () => {
+      if (isHandlingTimeoutRef.current) {
+        return;
+      }
+
+      persistActivity();
+      scheduleTimeout();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const lastActivity = readLastActivity();
+
+        if (lastActivity && Date.now() - lastActivity >= IDLE_TIMEOUT_MS) {
+          void handleIdleTimeout();
+          return;
+        }
+
+        persistActivity(true);
+        scheduleTimeout();
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === ACTIVITY_STORAGE_KEY) {
+        scheduleTimeout();
+      }
+    };
+
+    persistActivity(true);
+    scheduleTimeout();
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      "mousedown",
+      "mousemove",
+      "keydown",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, markActivity, { passive: true });
+    });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, markActivity);
+      });
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [isAuthReady, isAuthenticated, signOut]);
+
+  if (!isTimeoutModalOpen) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-[130] bg-black/45 px-6 py-8">
+      <div className="mx-auto flex h-full max-w-md items-center justify-center">
+        <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl">
+          <p className="text-xs font-black uppercase tracking-[0.35em] text-orange-600">
+            Session
+          </p>
+          <h2 className="mt-3 text-2xl font-black text-zinc-900">
+            閒置過久，已自動登出
+          </h2>
+          <p className="mt-4 text-sm leading-7 text-zinc-600">
+            因為超過 30 分鐘沒有操作，系統已為了安全自動登出。按下確認後會回到首頁。
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setIsTimeoutModalOpen(false);
+              navigate("/", { replace: true });
+            }}
+            className="mt-6 h-12 w-full rounded-full bg-zinc-900 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+          >
+            確認
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

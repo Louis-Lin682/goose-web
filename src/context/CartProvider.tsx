@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { MenuItem } from '../types/menu';
 import type { CartItem } from './cart.types';
 import { CartContext } from './CartContext';
@@ -37,11 +37,60 @@ const getStoredCart = (storageKey: string): CartItem[] => {
   return parseStoredCart(window.localStorage.getItem(LEGACY_CART_STORAGE_KEY));
 };
 
+const mergeCartItems = (baseCart: CartItem[], extraCart: CartItem[]) => {
+  const mergedCart = [...baseCart];
+
+  extraCart.forEach((extraItem) => {
+    const existingIndex = mergedCart.findIndex(
+      (cartItem) =>
+        cartItem.id === extraItem.id &&
+        cartItem.selectedVariant === extraItem.selectedVariant,
+    );
+
+    if (existingIndex > -1) {
+      mergedCart[existingIndex] = {
+        ...mergedCart[existingIndex],
+        quantity: mergedCart[existingIndex].quantity + extraItem.quantity,
+      };
+      return;
+    }
+
+    mergedCart.push(extraItem);
+  });
+
+  return mergedCart;
+};
+
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { user, isAuthReady } = useAuth();
   const storageKey = useMemo(() => getCartStorageKey(user?.id), [user?.id]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [hydratedStorageKey, setHydratedStorageKey] = useState<string | null>(null);
+  const previousUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isAuthReady) {
+      return;
+    }
+
+    const previousUserId = previousUserIdRef.current;
+    const currentUserId = user?.id ?? null;
+
+    if (!previousUserId && currentUserId) {
+      const guestCart = getStoredCart(GUEST_CART_KEY);
+      const userCartKey = getCartStorageKey(currentUserId);
+      const userCart = parseStoredCart(window.localStorage.getItem(userCartKey));
+
+      if (guestCart.length > 0) {
+        const mergedCart = mergeCartItems(userCart, guestCart);
+        window.localStorage.setItem(userCartKey, JSON.stringify(mergedCart));
+        window.localStorage.removeItem(GUEST_CART_KEY);
+        window.localStorage.removeItem(LEGACY_CART_STORAGE_KEY);
+      }
+    }
+
+    previousUserIdRef.current = currentUserId;
+  }, [isAuthReady, user?.id]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !isAuthReady) {

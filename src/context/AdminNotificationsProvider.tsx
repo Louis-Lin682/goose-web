@@ -135,6 +135,23 @@ export const AdminNotificationsProvider = ({
     await refreshNotifications({ silent: true });
   };
 
+  const markNotificationsForOrderAsRead = async (orderId: string) => {
+    const unreadOrderNotifications = notifications.filter(
+      (notification) => notification.orderId === orderId && !notification.isRead,
+    );
+
+    if (unreadOrderNotifications.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      unreadOrderNotifications.map((notification) =>
+        markNotificationAsReadRequest(notification.id),
+      ),
+    );
+    await refreshNotifications({ silent: true });
+  };
+
   const markAllNotificationsAsRead = async () => {
     await markAllNotificationsAsReadRequest();
     await refreshNotifications({ silent: true });
@@ -196,6 +213,7 @@ export const AdminNotificationsProvider = ({
       error,
       refreshNotifications,
       markNotificationAsRead,
+      markNotificationsForOrderAsRead,
       markAllNotificationsAsRead,
     }),
     [error, isLoading, notifications, unreadCount],

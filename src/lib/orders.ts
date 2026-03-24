@@ -1,5 +1,7 @@
 import { apiRequest } from "./api";
 import type {
+  AdminProductStatsPreset,
+  AdminProductStatsResponse,
   CreateOrderPayload,
   CreateOrderResponse,
   EcpayCheckoutResponse,
@@ -89,6 +91,28 @@ export const getOrderHistory = async (): Promise<OrderHistoryResponse> => {
 
 export const getAdminOrders = async (): Promise<OrderHistoryResponse> => {
   return apiRequest<OrderHistoryResponse>("/admin/orders");
+};
+
+export const getAdminProductStats = async (params: {
+  preset: AdminProductStatsPreset;
+  startDate?: string;
+  endDate?: string;
+}): Promise<AdminProductStatsResponse> => {
+  const searchParams = new URLSearchParams({
+    preset: params.preset,
+  });
+
+  if (params.startDate) {
+    searchParams.set("startDate", params.startDate);
+  }
+
+  if (params.endDate) {
+    searchParams.set("endDate", params.endDate);
+  }
+
+  return apiRequest<AdminProductStatsResponse>(
+    `/admin/orders/product-stats?${searchParams.toString()}`,
+  );
 };
 
 export const updateOrderStatus = async (

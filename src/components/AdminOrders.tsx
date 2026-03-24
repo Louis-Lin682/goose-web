@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
-import { Link } from "react-router-dom";
 import { AdminActionLoadingOverlay } from "./AdminActionLoadingOverlay";
 import { useAuth } from "../context/useAuth";
+import { useAdminNotifications } from "../context/useAdminNotifications";
 import { getAdminOrders, updateOrderStatus } from "../lib/orders";
 import type { OrderHistoryEntry, OrderStatus } from "../types/order";
 
-const formatCurrency = (value: number) => `$${value}`;
-const MIN_ACTION_LOADING_MS = 650;
-const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+type OrderDatePreset = "today" | "this-month" | "last-month" | "custom";
 
-const formatDate = (value: string) =>
+const MIN_ACTION_LOADING_MS = 650;
+
+const wait = (ms: number) =>
+  new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const formatCurrency = (value: number) => `$${value}`;
+
+const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat("zh-TW", {
     year: "numeric",
     month: "2-digit",
@@ -18,6 +23,34 @@ const formatDate = (value: string) =>
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+
+const getDateString = (value: Date) => {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, "0");
+  const day = `${value.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const resolvePresetRange = (preset: Exclude<OrderDatePreset, "custom">) => {
+  const now = new Date();
+
+  if (preset === "today") {
+    const today = getDateString(now);
+    return { startDate: today, endDate: today };
+  }
+
+  if (preset === "this-month") {
+    return {
+      startDate: getDateString(new Date(now.getFullYear(), now.getMonth(), 1)),
+      endDate: getDateString(now),
+    };
+  }
+
+  return {
+    startDate: getDateString(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+    endDate: getDateString(new Date(now.getFullYear(), now.getMonth(), 0)),
+  };
+};
 
 const orderStatusLabels: Record<OrderStatus, string> = {
   PENDING: "待確認",
@@ -43,6 +76,12 @@ const statusOptions: OrderStatus[] = [
   "CANCELLED",
 ];
 
+const datePresetLabels: Record<Exclude<OrderDatePreset, "custom">, string> = {
+  today: "本日",
+  "this-month": "本月",
+  "last-month": "上月",
+};
+
 const deliveryLabels: Record<string, string> = {
   home: "宅配到府",
   pickup: "黑貓店取",
@@ -55,8 +94,8 @@ const paymentLabels: Record<string, string> = {
 
 const variantLabels: Record<string, string> = {
   single: "單一規格",
-  small: "小",
-  large: "大",
+  small: "小份",
+  large: "大份",
 };
 
 const orderStatusBadgeStyles: Record<OrderStatus, string> = {
@@ -74,8 +113,14 @@ const paymentStatusBadgeStyles: Record<"UNPAID" | "PAID" | "FAILED", string> = {
   FAILED: "bg-red-100 text-red-700",
 };
 
+const isOrderInRange = (createdAt: string, startDate: string, endDate: string) => {
+  const orderDate = getDateString(new Date(createdAt));
+  return orderDate >= startDate && orderDate <= endDate;
+};
+
 export const AdminOrders = () => {
   const { isAuthReady, isAuthenticated, user } = useAuth();
+  const { unreadCount, markNotificationsForOrderAsRead } = useAdminNotifications();
   const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,13 +128,25 @@ export const AdminOrders = () => {
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [statusFilterInput, setStatusFilterInput] = useState<"" | OrderStatus>("");
   const [orderNumberInput, setOrderNumberInput] = useState("");
+  const [datePreset, setDatePreset] = useState<OrderDatePreset>("today");
+  const [startDateInput, setStartDateInput] = useState("");
+  const [endDateInput, setEndDateInput] = useState("");
   const [appliedStatusFilter, setAppliedStatusFilter] = useState<"" | OrderStatus>("");
   const [appliedOrderNumberFilter, setAppliedOrderNumberFilter] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
 
   useEffect(() => {
-    if (!isAuthReady) {
-      return;
-    }
+    const range = resolvePresetRange("today");
+    setStartDateInput(range.startDate);
+    setEndDateInput(range.endDate);
+    setAppliedStartDate(range.startDate);
+    setAppliedEndDate(range.endDate);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthReady) return;
 
     if (!isAuthenticated || !user?.isAdmin) {
       setOrders([]);
@@ -106,26 +163,17 @@ export const AdminOrders = () => {
 
       try {
         const response = await getAdminOrders();
-
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setOrders(response.orders);
       } catch (fetchError) {
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setError(
           fetchError instanceof Error
             ? fetchError.message
-            : "訂單資料載入失敗，請稍後再試一次。",
+            : "載入訂單資料失敗，請稍後再試。",
         );
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     };
 
@@ -136,22 +184,29 @@ export const AdminOrders = () => {
     };
   }, [isAuthReady, isAuthenticated, user?.isAdmin]);
 
-  const statusCounts = useMemo(() => {
-    return orders.reduce<Record<OrderStatus, number>>(
-      (acc, order) => {
-        acc[order.status] += 1;
-        return acc;
-      },
-      {
-        PENDING: 0,
-        PAID: 0,
-        PROCESSING: 0,
-        SHIPPED: 0,
-        COMPLETED: 0,
-        CANCELLED: 0,
-      },
-    );
-  }, [orders]);
+  useEffect(() => {
+    if (!isAuthReady || !isAuthenticated || !user?.isAdmin) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const refreshOrdersFromNotifications = async () => {
+      try {
+        const response = await getAdminOrders();
+        if (!isMounted) return;
+        setOrders(response.orders);
+      } catch {
+        // Keep current list if silent refresh fails.
+      }
+    };
+
+    void refreshOrdersFromNotifications();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthReady, isAuthenticated, unreadCount, user?.isAdmin]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -162,10 +217,39 @@ export const AdminOrders = () => {
         order.orderNumber
           .toLowerCase()
           .includes(appliedOrderNumberFilter.trim().toLowerCase());
+      const matchesDate =
+        !appliedStartDate ||
+        !appliedEndDate ||
+        isOrderInRange(order.createdAt, appliedStartDate, appliedEndDate);
 
-      return matchesStatus && matchesOrderNumber;
+      return matchesStatus && matchesOrderNumber && matchesDate;
     });
-  }, [appliedOrderNumberFilter, appliedStatusFilter, orders]);
+  }, [
+    appliedEndDate,
+    appliedOrderNumberFilter,
+    appliedStartDate,
+    appliedStatusFilter,
+    orders,
+  ]);
+
+  const filteredStatusCounts = useMemo(
+    () =>
+      filteredOrders.reduce<Record<OrderStatus, number>>(
+        (acc, order) => {
+          acc[order.status] += 1;
+          return acc;
+        },
+        {
+          PENDING: 0,
+          PAID: 0,
+          PROCESSING: 0,
+          SHIPPED: 0,
+          COMPLETED: 0,
+          CANCELLED: 0,
+        },
+      ),
+    [filteredOrders],
+  );
 
   const toggleOrder = (orderId: string) => {
     setExpandedOrderId((currentId) => (currentId === orderId ? null : orderId));
@@ -186,11 +270,12 @@ export const AdminOrders = () => {
           order.id === orderId ? { ...order, status: nextStatus } : order,
         ),
       );
+      await markNotificationsForOrderAsRead(orderId);
     } catch (updateError) {
       setError(
         updateError instanceof Error
           ? updateError.message
-          : "訂單狀態更新失敗，請稍後再試一次。",
+          : "更新訂單狀態失敗，請稍後再試。",
       );
     } finally {
       setUpdatingOrderId(null);
@@ -198,38 +283,71 @@ export const AdminOrders = () => {
   };
 
   const applyFilters = () => {
-    const nextStatusFilter = statusFilterInput;
-    const nextOrderNumberFilter = orderNumberInput.trim().toLowerCase();
-
-    setAppliedStatusFilter(nextStatusFilter);
+    setIsFilterLoading(true);
+    setAppliedStatusFilter(statusFilterInput);
     setAppliedOrderNumberFilter(orderNumberInput);
-
-    orders.filter((order) => {
-      const matchesStatus =
-        nextStatusFilter === "" || order.status === nextStatusFilter;
-      const matchesOrderNumber =
-        nextOrderNumberFilter === "" ||
-        order.orderNumber.toLowerCase().includes(nextOrderNumberFilter);
-
-      return matchesStatus && matchesOrderNumber;
-    });
-
+    setAppliedStartDate(startDateInput);
+    setAppliedEndDate(endDateInput);
     setExpandedOrderId(null);
+    window.setTimeout(() => setIsFilterLoading(false), 280);
   };
 
   const clearFilters = () => {
+    setIsFilterLoading(true);
+    const range = resolvePresetRange("today");
+    setDatePreset("today");
     setStatusFilterInput("");
     setOrderNumberInput("");
+    setStartDateInput(range.startDate);
+    setEndDateInput(range.endDate);
     setAppliedStatusFilter("");
     setAppliedOrderNumberFilter("");
+    setAppliedStartDate(range.startDate);
+    setAppliedEndDate(range.endDate);
     setExpandedOrderId(null);
+    window.setTimeout(() => setIsFilterLoading(false), 280);
   };
+
+  const handleDatePresetChange = (nextPreset: Exclude<OrderDatePreset, "custom">) => {
+    setIsFilterLoading(true);
+    setDatePreset(nextPreset);
+    window.setTimeout(() => setIsFilterLoading(false), 280);
+  };
+
+  useEffect(() => {
+    setAppliedStatusFilter(statusFilterInput);
+    setExpandedOrderId(null);
+  }, [statusFilterInput]);
+
+  useEffect(() => {
+    setAppliedOrderNumberFilter(orderNumberInput);
+    setExpandedOrderId(null);
+  }, [orderNumberInput]);
+
+  useEffect(() => {
+    if (datePreset === "custom") return;
+
+    const range = resolvePresetRange(datePreset);
+    setStartDateInput(range.startDate);
+    setEndDateInput(range.endDate);
+    setAppliedStartDate(range.startDate);
+    setAppliedEndDate(range.endDate);
+    setExpandedOrderId(null);
+  }, [datePreset]);
+
+  useEffect(() => {
+    if (datePreset !== "custom") return;
+
+    setAppliedStartDate(startDateInput);
+    setAppliedEndDate(endDateInput);
+    setExpandedOrderId(null);
+  }, [datePreset, endDateInput, startDateInput]);
 
   if (!isAuthReady) {
     return (
       <main className="min-h-screen bg-white px-6 pb-24 pt-40">
         <div className="mx-auto max-w-6xl rounded-[2rem] border border-zinc-100 bg-zinc-50 px-8 py-16 text-center">
-          <p className="text-sm text-zinc-500">正在載入後台資料...</p>
+          <p className="text-sm text-zinc-500">正在驗證登入狀態...</p>
         </div>
       </main>
     );
@@ -242,11 +360,11 @@ export const AdminOrders = () => {
           <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
             Admin
           </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-zinc-900 md:text-6xl">
-            請先登入後台
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
+            請先登入管理員帳號
           </h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-500">
-            登入管理員帳號後，才能查看與管理全部訂單。
+          <p className="mt-3 text-sm leading-6 text-zinc-500">
+            登入後即可查看訂單管理、調整訂單狀態與追蹤最新進度。
           </p>
         </div>
       </main>
@@ -260,11 +378,11 @@ export const AdminOrders = () => {
           <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
             Admin
           </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-zinc-900 md:text-6xl">
-            你沒有後台權限
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
+            這個頁面僅限管理員
           </h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-500">
-            目前登入帳號不是管理員，無法查看後台訂單資料。
+          <p className="mt-3 text-sm leading-6 text-zinc-500">
+            目前登入帳號沒有管理權限，請切換管理員帳號後再查看。
           </p>
         </div>
       </main>
@@ -273,81 +391,68 @@ export const AdminOrders = () => {
 
   return (
     <main className="min-h-screen bg-white px-6 pb-24 pt-40 lg:h-full lg:overflow-hidden lg:pb-10 lg:pt-10">
-      {updatingOrderId && (
-        <AdminActionLoadingOverlay title="訂單狀態更新中..." />
-      )}
+      {updatingOrderId && <AdminActionLoadingOverlay title="更新訂單狀態中..." />}
+      {isFilterLoading && <AdminActionLoadingOverlay title="篩選中..." />}
 
       <div className="mx-auto max-w-6xl lg:flex lg:h-full lg:flex-col">
         <div className="shrink-0">
-          <div className="mb-12 flex flex-col gap-6 border-b border-zinc-100 pb-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mb-8 flex flex-col gap-4 border-b border-zinc-100 pb-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
                 Admin
               </p>
-              <h1 className="mt-4 text-4xl font-black tracking-tight text-zinc-900 md:text-6xl">
+              <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
                 訂單管理
               </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-500">
-                查看全部訂單、付款狀態與配送進度，並手動更新訂單處理流程。
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
+                快速查看目前訂單狀態、付款情況與收件資訊，方便即時處理出貨流程。
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 rounded-3xl bg-zinc-50 p-4 md:grid-cols-5">
-              <div className="min-w-[96px] text-center">
-                <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400">
-                  待確認
-                </p>
-                <p className="mt-2 text-2xl font-black text-zinc-900">
-                  {statusCounts.PENDING}
-                </p>
-              </div>
-              <div className="min-w-[96px] text-center">
-                <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400">
-                  已付款待處理
-                </p>
-                <p className="mt-2 text-2xl font-black text-zinc-900">
-                  {statusCounts.PAID}
-                </p>
-              </div>
-              <div className="min-w-[96px] text-center">
-                <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400">
-                  處理中
-                </p>
-                <p className="mt-2 text-2xl font-black text-zinc-900">
-                  {statusCounts.PROCESSING}
-                </p>
+            <div className="grid grid-cols-2 gap-3 rounded-3xl bg-zinc-50 p-4 md:grid-cols-5">
+              {[
+                ["待確認", filteredStatusCounts.PENDING],
+                ["已付款待處理", filteredStatusCounts.PAID],
+                ["處理中", filteredStatusCounts.PROCESSING],
+                ["已出貨", filteredStatusCounts.SHIPPED],
+                ["已完成", filteredStatusCounts.COMPLETED],
+              ].map(([label, value]) => (
+                <div key={label} className="min-w-[86px] text-center">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-400">
+                    {label}
+                  </p>
+                  <p className="mt-2 text-xl font-black text-zinc-900">{value}</p>
                 </div>
-                <div className="min-w-[96px] text-center">
-                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400">
-                    已出貨
-                  </p>
-                  <p className="mt-2 text-2xl font-black text-zinc-900">
-                    {statusCounts.SHIPPED}
-                  </p>
-                </div>
-                <div className="min-w-[96px] text-center">
-                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-zinc-400">
-                    已完成
-                  </p>
-                  <p className="mt-2 text-2xl font-black text-zinc-900">
-                    {statusCounts.COMPLETED}
-                  </p>
-                </div>
+              ))}
             </div>
           </div>
 
-          <div className="mb-8 rounded-[2rem] border border-zinc-100 bg-white p-5 shadow-sm">
-            <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr_0.8fr]">
-              <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-zinc-400">
-                  訂單狀態篩選
-                </p>
+          <div className="mb-8 rounded-[2rem] border border-zinc-100 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-2">
+                {(["today", "this-month", "last-month"] as const).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => handleDatePresetChange(item)}
+                    className={`inline-flex rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                      datePreset === item
+                        ? "bg-zinc-900 text-white"
+                        : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                    }`}
+                  >
+                    {datePresetLabels[item]}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid gap-3 xl:grid-cols-[0.75fr_1fr_1fr_1.1fr_auto_auto]">
                 <select
                   value={statusFilterInput}
                   onChange={(event) =>
                     setStatusFilterInput(event.target.value as "" | OrderStatus)
                   }
-                  className="h-11 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 outline-none transition-colors focus:border-orange-400"
+                  className="h-10 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 outline-none transition-colors focus:border-orange-400"
                 >
                   <option value="">全部狀態</option>
                   {statusOptions.map((status) => (
@@ -356,36 +461,54 @@ export const AdminOrders = () => {
                     </option>
                   ))}
                 </select>
-              </div>
 
-              <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-zinc-400">
-                  訂單編號搜尋
-                </p>
+                <input
+                  type="date"
+                  value={startDateInput}
+                  onChange={(event) => {
+                    setDatePreset("custom");
+                    setStartDateInput(event.target.value);
+                  }}
+                  onClick={(event) => event.currentTarget.showPicker?.()}
+                  onFocus={(event) => event.currentTarget.showPicker?.()}
+                  className="h-10 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition-colors focus:border-orange-400"
+                />
+
+                <input
+                  type="date"
+                  value={endDateInput}
+                  onChange={(event) => {
+                    setDatePreset("custom");
+                    setEndDateInput(event.target.value);
+                  }}
+                  onClick={(event) => event.currentTarget.showPicker?.()}
+                  onFocus={(event) => event.currentTarget.showPicker?.()}
+                  className="h-10 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition-colors focus:border-orange-400"
+                />
+
                 <input
                   type="text"
                   value={orderNumberInput}
                   onChange={(event) => setOrderNumberInput(event.target.value)}
-                  placeholder="輸入訂單編號，例如 GO2026..."
-                  className="h-11 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-orange-400"
+                  placeholder="搜尋訂單編號，例如 GO2026..."
+                  className="h-10 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-orange-400"
                 />
-              </div>
 
-              <div className="flex items-end gap-3">
                 <button
                   type="button"
                   onClick={applyFilters}
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-zinc-900 px-5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                  className="inline-flex h-10 items-center justify-center rounded-full bg-zinc-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
                 >
                   <Search className="mr-2 h-4 w-4" />
                   搜尋
                 </button>
+
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-5 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-zinc-200 px-4 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
                 >
-                  全部
+                  清除
                 </button>
               </div>
             </div>
@@ -401,13 +524,13 @@ export const AdminOrders = () => {
         <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
           {isLoading ? (
             <div className="rounded-[2rem] border border-zinc-100 bg-zinc-50 px-8 py-16 text-center text-sm text-zinc-500">
-              訂單資料載入中...
+              正在載入訂單資料...
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="rounded-[2rem] border border-dashed border-zinc-200 bg-zinc-50 px-8 py-16 text-center">
-              <p className="text-2xl font-bold text-zinc-900">找不到符合條件的訂單</p>
+              <p className="text-2xl font-bold text-zinc-900">目前沒有符合條件的訂單</p>
               <p className="mt-3 text-sm text-zinc-500">
-                可以調整狀態篩選或重新輸入訂單編號後再試一次。
+                可以先調整日期、狀態或訂單編號關鍵字，再重新查看結果。
               </p>
             </div>
           ) : (
@@ -432,7 +555,7 @@ export const AdminOrders = () => {
                               {order.orderNumber}
                             </p>
                             <p className="mt-2 text-sm text-zinc-500">
-                              {formatDate(order.createdAt)}
+                              {formatDateTime(order.createdAt)}
                             </p>
                           </div>
                           <div>
@@ -482,10 +605,7 @@ export const AdminOrders = () => {
                             value={statusOptions.includes(order.status) ? order.status : "PENDING"}
                             disabled={isUpdating}
                             onChange={(event) =>
-                              void handleStatusChange(
-                                order.id,
-                                event.target.value as OrderStatus,
-                              )
+                              void handleStatusChange(order.id, event.target.value as OrderStatus)
                             }
                             className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 outline-none transition-colors focus:border-orange-400 disabled:cursor-not-allowed disabled:bg-zinc-100"
                           >
@@ -501,7 +621,7 @@ export const AdminOrders = () => {
                             onClick={() => toggleOrder(order.id)}
                             className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:border-orange-300 hover:text-orange-600"
                           >
-                            {isExpanded ? "收合明細" : "展開明細"}
+                            {isExpanded ? "收合" : "展開"}
                             <ChevronDown
                               className={`h-4 w-4 transition-transform duration-200 ${
                                 isExpanded ? "rotate-180" : ""
@@ -587,7 +707,7 @@ export const AdminOrders = () => {
                                       付款時間
                                     </p>
                                     <p className="mt-2 font-semibold text-white">
-                                      {formatDate(order.paidAt)}
+                                      {formatDateTime(order.paidAt)}
                                     </p>
                                   </div>
                                 )}
@@ -607,7 +727,7 @@ export const AdminOrders = () => {
                                   <span>{formatCurrency(order.codFee)}</span>
                                 </div>
                                 <div className="flex items-center justify-between border-t border-white/10 pt-3 text-base font-bold">
-                                  <span>應付合計</span>
+                                  <span>應付總額</span>
                                   <span>{formatCurrency(order.totalAmount)}</span>
                                 </div>
                               </div>
@@ -628,13 +748,9 @@ export const AdminOrders = () => {
             </div>
           )}
 
-          <div className="mt-8">
-            <Link
-              to="/orders"
-              className="inline-flex rounded-full border border-zinc-200 px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-100"
-            >
-              查看前台訂單查詢
-            </Link>
+          <div className="mt-8 rounded-[1.5rem] border border-zinc-100 bg-zinc-50 px-5 py-4 text-sm text-zinc-500">
+            <span className="font-semibold text-zinc-900">{filteredOrders.length}</span>{" "}
+            筆符合目前篩選條件的訂單
           </div>
         </div>
       </div>

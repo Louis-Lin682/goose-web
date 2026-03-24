@@ -1,4 +1,13 @@
-import { Bell, Home, LogIn, LogOut, Package, ReceiptText, Users } from "lucide-react";
+import {
+  BarChart3,
+  Bell,
+  Home,
+  LogIn,
+  LogOut,
+  Package,
+  ReceiptText,
+  Users,
+} from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { AdminSectionNav } from "./AdminSectionNav";
 import { useAdminNotifications } from "../context/useAdminNotifications";
@@ -29,10 +38,10 @@ export const AdminLayout = () => {
               Goose Admin
             </p>
             <h1 className="mt-4 text-3xl font-black tracking-tight text-zinc-900">
-              後台管理系統
+              後台管理中心
             </h1>
             <p className="mt-3 text-sm leading-7 text-zinc-500">
-              後台負責全域狀態管理更新通知訊息，更新菜單商品與處理訂單的過程並同步前台
+              在這裡集中查看通知、訂單、商品、會員與銷售統計，快速完成日常營運管理。
             </p>
           </div>
 
@@ -49,7 +58,7 @@ export const AdminLayout = () => {
             >
               <span className="inline-flex items-center gap-3">
                 <Bell className="h-4 w-4" />
-                <span>訂單通知</span>
+                <span>通知管理</span>
               </span>
               <span className="inline-flex min-h-6 min-w-6 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[11px] font-bold text-white">
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -69,6 +78,22 @@ export const AdminLayout = () => {
               <span className="inline-flex items-center gap-3">
                 <ReceiptText className="h-4 w-4" />
                 <span>訂單管理</span>
+              </span>
+            </NavLink>
+
+            <NavLink
+              to="/admin/stats"
+              className={({ isActive }) =>
+                `${desktopNavItemClassName} ${
+                  isActive
+                    ? "bg-zinc-900 text-white"
+                    : "bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                }`
+              }
+            >
+              <span className="inline-flex items-center gap-3">
+                <BarChart3 className="h-4 w-4" />
+                <span>商品統計</span>
               </span>
             </NavLink>
 
@@ -110,7 +135,7 @@ export const AdminLayout = () => {
               Storefront
             </p>
             <p className="mt-3 text-sm leading-7 text-zinc-500">
-              回到前台檢查菜單商品顯示，確認圖片及分類是否同步更新。
+              可隨時返回前台網站查看實際頁面與購物流程，確認最新內容與後台設定是否同步。
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <NavLink
@@ -118,7 +143,7 @@ export const AdminLayout = () => {
                 className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
               >
                 <Home className="h-4 w-4" />
-                前台
+                回到前台
               </NavLink>
               {isAuthenticated ? (
                 <button
@@ -151,7 +176,7 @@ export const AdminLayout = () => {
                     Goose Admin
                   </p>
                   <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900">
-                    後台管理系統
+                    後台管理中心
                   </h1>
                 </div>
 
@@ -161,7 +186,7 @@ export const AdminLayout = () => {
                     className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
                   >
                     <Home className="h-4 w-4" />
-                    Back to Store
+                    回到前台
                   </NavLink>
                   {isAuthenticated ? (
                     <button
@@ -170,7 +195,7 @@ export const AdminLayout = () => {
                       className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
                     >
                       <LogOut className="h-4 w-4" />
-                      Log Out
+                      登出
                     </button>
                   ) : (
                     <NavLink
@@ -178,14 +203,14 @@ export const AdminLayout = () => {
                       className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
                     >
                       <LogIn className="h-4 w-4" />
-                      Log In
+                      登入
                     </NavLink>
                   )}
                 </div>
               </div>
 
               <p className="mt-4 text-sm leading-7 text-zinc-500">
-                回到前台檢查菜單商品顯示，確認圖片及分類是否同步更新。
+                可隨時返回前台網站查看實際頁面與購物流程，確認最新內容與後台設定是否同步。
               </p>
             </div>
 

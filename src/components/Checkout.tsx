@@ -98,15 +98,35 @@ const buildInitialForm = (
   name = "",
   phone = "",
   email = "",
+  address = "",
 ): CheckoutFormState => ({
   recipientName: name,
   recipientPhone: phone,
   recipientEmail: email,
-  recipientAddress: "",
+  recipientAddress: address,
   note: "",
   deliveryMethod: "home",
   paymentMethod: "online",
 });
+
+const resolveCheckoutErrorMessage = (error: unknown) => {
+  if (!(error instanceof Error)) {
+    return "送出失敗，請稍後再試一次。";
+  }
+
+  const message = error.message.trim();
+
+  if (
+    message.includes("Please log in before checking out.") ||
+    message.includes("Please log in first") ||
+    message.includes("Unauthorized") ||
+    message.includes("401")
+  ) {
+    return "登入狀態已過期，請重新登入後再送出訂單。";
+  }
+
+  return message || "送出失敗，請稍後再試一次。";
+};
 
 const submitEcpayCheckout = (action: string, fields: Record<string, string>) => {
   const form = document.createElement("form");
@@ -230,7 +250,12 @@ export const Checkout = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrderNumber, setCompletedOrderNumber] = useState<string | null>(null);
   const [form, setForm] = useState<CheckoutFormState>(() =>
-    buildInitialForm(user?.name ?? "", user?.phone ?? "", user?.email ?? ""),
+    buildInitialForm(
+      user?.name ?? "",
+      user?.phone ?? "",
+      user?.email ?? "",
+      user?.address ?? "",
+    ),
   );
 
   useEffect(() => {
@@ -255,6 +280,7 @@ export const Checkout = () => {
       recipientName: user.name,
       recipientPhone: user.phone,
       recipientEmail: user.email,
+      recipientAddress: prev.recipientAddress.trim() ? prev.recipientAddress : user.address ?? "",
     }));
   }, [
     form.recipientEmail,
@@ -287,9 +313,10 @@ export const Checkout = () => {
     if (checked && user) {
       setForm((prev) => ({
         ...prev,
-      recipientName: user.name,
-      recipientPhone: user.phone,
-      recipientEmail: user.email,
+        recipientName: user.name,
+        recipientPhone: user.phone,
+        recipientEmail: user.email,
+        recipientAddress: user.address ?? "",
       }));
     }
   };
@@ -342,9 +369,7 @@ export const Checkout = () => {
       setCompletedOrderNumber(response.orderNumber);
       setSubmitMessage("訂單建立成功，我們會儘快為你安排後續處理。");
     } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : "送出失敗，請稍後再試一次。",
-      );
+      setSubmitError(resolveCheckoutErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }

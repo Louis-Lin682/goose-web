@@ -8,6 +8,7 @@ export type AdminNotificationsContextType = {
   error: string | null;
   refreshNotifications: () => Promise<void>;
   markNotificationAsRead: (notificationId: string) => Promise<void>;
+  markNotificationsForOrderAsRead: (orderId: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
 };
 

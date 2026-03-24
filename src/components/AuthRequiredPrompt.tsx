@@ -10,7 +10,7 @@ type AuthRequiredPromptProps = {
 
 const PromptCard = ({
   title = "請先登入或註冊",
-  description = "完成登入後才可以前往結帳，這樣訂單資料與會員資訊才能正確對應。",
+  description = "登入後才能繼續結帳、查看訂單或使用需要會員身分的功能。",
   actions,
 }: Omit<AuthRequiredPromptProps, "onClose" | "modal">) => (
   <div className="w-full max-w-md rounded-[2rem] bg-white p-7 shadow-2xl">
@@ -32,9 +32,7 @@ export const AuthRequiredPrompt = ({
   modal = false,
 }: AuthRequiredPromptProps) => {
   if (!modal) {
-    return (
-      <PromptCard title={title} description={description} actions={actions} />
-    );
+    return <PromptCard title={title} description={description} actions={actions} />;
   }
 
   return (
