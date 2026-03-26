@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://api.gozoshe.com/$1"
+      "destination": "https://goose-api-staging.onrender.com/$1"
     },
     {
       "source": "/((?!api/|assets/|image/|favicon\\.svg|.*\\..*).*)",

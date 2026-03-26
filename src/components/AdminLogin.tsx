@@ -2,6 +2,7 @@ import { type FormEvent, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EnvironmentInlineTag } from "./EnvironmentIndicator";
 import { useAuth } from "../context/useAuth";
 import { getCurrentUser, login as loginUser, logout as logoutUser } from "../lib/auth";
 import type { LoginPayload } from "../types/auth";
@@ -91,9 +92,12 @@ export const AdminLogin = () => {
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-6xl items-center justify-center">
         <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-[0.95fr_1.05fr]">
           <section className="rounded-[2.25rem] border border-white/60 bg-zinc-900 px-8 py-10 text-white shadow-[0_28px_90px_rgba(0,0,0,0.08)]">
-            <p className="text-xs font-black uppercase tracking-[0.34em] text-orange-400">
-              Goose Admin
-            </p>
+            <div className="relative inline-flex">
+              <p className="text-xs font-black uppercase tracking-[0.34em] text-orange-400">
+                Goose Admin
+              </p>
+              <EnvironmentInlineTag className="absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap" />
+            </div>
             <h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">
               後台登入入口
             </h1>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "../context/useAuth";
 import { useAdminNotifications } from "../context/useAdminNotifications";
 import { useCart } from "../context/useCart";
+import { EnvironmentInlineTag } from "./EnvironmentIndicator";
 import { getCurrentUser, getLineAuthStartUrl, login as loginUser, logout as logoutUser, register as registerUser } from "../lib/auth";
 import type { LoginPayload, RegisterPayload } from "../types/auth";
 
@@ -306,8 +307,11 @@ export const Navbar = () => {
                 className="h-full w-full object-cover"
               />
             </div>
-            <div className="cursor-pointer text-2xl font-black tracking-tighter">
-              鵝作社<span className="text-orange-500">.</span>
+            <div className="relative">
+              <div className="cursor-pointer text-2xl font-black tracking-tighter">
+                鵝作社<span className="text-orange-500">.</span>
+              </div>
+              <EnvironmentInlineTag className="absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap" />
             </div>
           </Link>
 

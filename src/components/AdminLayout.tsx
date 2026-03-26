@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { AdminSectionNav } from "./AdminSectionNav";
+import { EnvironmentInlineTag } from "./EnvironmentIndicator";
 import { useAdminNotifications } from "../context/useAdminNotifications";
 import { useAuth } from "../context/useAuth";
 import { logout as logoutUser } from "../lib/auth";
@@ -34,9 +35,12 @@ export const AdminLayout = () => {
       <div className="mx-auto flex max-w-[1680px] gap-6 lg:h-[calc(100vh-3rem)]">
         <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-72 shrink-0 overflow-x-hidden overflow-y-auto rounded-[2.25rem] border border-white/60 bg-white/85 p-6 shadow-[0_28px_90px_rgba(0,0,0,0.07)] backdrop-blur-sm lg:flex lg:flex-col">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.38em] text-orange-600">
-              Goose Admin
-            </p>
+            <div className="relative inline-flex">
+              <p className="text-xs font-black uppercase tracking-[0.38em] text-orange-600">
+                Goose Admin
+              </p>
+              <EnvironmentInlineTag className="absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap" />
+            </div>
             <h1 className="mt-4 text-3xl font-black tracking-tight text-zinc-900">
               後台管理中心
             </h1>
@@ -172,9 +176,12 @@ export const AdminLayout = () => {
             <div className="rounded-[2rem] border border-white/55 bg-white/82 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.06)] backdrop-blur-sm">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.38em] text-orange-600">
-                    Goose Admin
-                  </p>
+                  <div className="relative inline-flex">
+                    <p className="text-xs font-black uppercase tracking-[0.38em] text-orange-600">
+                      Goose Admin
+                    </p>
+                    <EnvironmentInlineTag className="absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap" />
+                  </div>
                   <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900">
                     後台管理中心
                   </h1>
