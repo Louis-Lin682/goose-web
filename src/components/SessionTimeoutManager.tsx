@@ -2,20 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { getCurrentUser, logout as logoutUser } from "../lib/auth";
-import { SESSION_TIMEOUT_EVENT } from "../lib/session-timeout";
+import {
+  SESSION_AUTH_GRACE_KEY,
+  SESSION_LAST_ACTIVITY_KEY,
+  SESSION_TIMEOUT_EVENT,
+  clearSessionAuthGrace,
+  isWithinSessionAuthGrace,
+} from "../lib/session-timeout";
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const ACTIVITY_THROTTLE_MS = 15 * 1000;
 const SESSION_KEEPALIVE_MS = 5 * 60 * 1000;
 const IDLE_CHECK_INTERVAL_MS = 30 * 1000;
-const ACTIVITY_STORAGE_KEY = "goose_last_activity_at";
-
 const readLastActivity = () => {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const value = window.localStorage.getItem(ACTIVITY_STORAGE_KEY);
+  const value = window.localStorage.getItem(SESSION_LAST_ACTIVITY_KEY);
   if (!value) {
     return null;
   }
@@ -29,7 +33,7 @@ const writeLastActivity = (timestamp: number) => {
     return;
   }
 
-  window.localStorage.setItem(ACTIVITY_STORAGE_KEY, `${timestamp}`);
+  window.localStorage.setItem(SESSION_LAST_ACTIVITY_KEY, `${timestamp}`);
 };
 
 const clearLastActivity = () => {
@@ -37,7 +41,7 @@ const clearLastActivity = () => {
     return;
   }
 
-  window.localStorage.removeItem(ACTIVITY_STORAGE_KEY);
+  window.localStorage.removeItem(SESSION_LAST_ACTIVITY_KEY);
 };
 
 export const SessionTimeoutManager = () => {
@@ -75,6 +79,7 @@ export const SessionTimeoutManager = () => {
 
     if (!isAuthenticated) {
       clearLastActivity();
+      clearSessionAuthGrace();
       isHandlingTimeoutRef.current = false;
       hasShownTimeoutModalRef.current = false;
       hasCompletedInitialAuthRef.current = false;
@@ -83,6 +88,10 @@ export const SessionTimeoutManager = () => {
     }
 
     const showTimeoutModal = () => {
+      if (isWithinSessionAuthGrace()) {
+        return;
+      }
+
       if (hasShownTimeoutModalRef.current) {
         return;
       }
@@ -127,9 +136,20 @@ export const SessionTimeoutManager = () => {
         const response = await getCurrentUser();
 
         if (!response.user) {
+          if (isWithinSessionAuthGrace()) {
+            persistActivity(true);
+            scheduleTimeout();
+            return;
+          }
           showTimeoutModal();
         }
       } catch (error) {
+        if (isWithinSessionAuthGrace()) {
+          persistActivity(true);
+          scheduleTimeout();
+          return;
+        }
+
         if (
           error instanceof Error &&
           (error.message.includes("401") ||
@@ -142,6 +162,12 @@ export const SessionTimeoutManager = () => {
 
     const handleIdleTimeout = async () => {
       if (isHandlingTimeoutRef.current) {
+        return;
+      }
+
+      if (isWithinSessionAuthGrace()) {
+        persistActivity(true);
+        scheduleTimeout();
         return;
       }
 
@@ -189,6 +215,10 @@ export const SessionTimeoutManager = () => {
     };
 
     const checkIdleState = () => {
+      if (isWithinSessionAuthGrace()) {
+        return;
+      }
+
       const lastActivity = readLastActivity();
 
       if (!lastActivity) {
@@ -221,6 +251,12 @@ export const SessionTimeoutManager = () => {
         return;
       }
 
+      if (isWithinSessionAuthGrace()) {
+        persistActivity(true);
+        scheduleTimeout();
+        return;
+      }
+
       const lastActivity = readLastActivity();
 
       if (lastActivity && Date.now() - lastActivity >= IDLE_TIMEOUT_MS) {
@@ -234,7 +270,10 @@ export const SessionTimeoutManager = () => {
     };
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === ACTIVITY_STORAGE_KEY) {
+      if (
+        event.key === SESSION_LAST_ACTIVITY_KEY ||
+        event.key === SESSION_AUTH_GRACE_KEY
+      ) {
         scheduleTimeout();
       }
     };

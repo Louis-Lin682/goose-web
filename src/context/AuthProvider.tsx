@@ -5,6 +5,7 @@ import {
   type ReactNode,
 } from "react";
 import { getCurrentUser } from "../lib/auth";
+import { clearSessionAuthGrace, markSessionAuthenticated } from "../lib/session-timeout";
 import type { AuthUser } from "../types/auth";
 import { AuthContext } from "./AuthContext";
 
@@ -61,10 +62,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAuthenticated: Boolean(user),
       isAuthReady,
       signIn: (nextUser: AuthUser) => {
+        markSessionAuthenticated();
         setUser(nextUser);
         setIsAuthReady(true);
       },
       signOut: () => {
+        clearSessionAuthGrace();
         setUser(null);
         setIsAuthReady(true);
       },
