@@ -1,6 +1,4 @@
 const LOCAL_API_BASE_URL = "http://localhost:3001";
-const STAGING_API_BASE_URL = "https://goose-api-staging.onrender.com";
-const PRODUCTION_API_BASE_URL = "https://api.gozoshe.com";
 
 const resolveApiBaseUrl = () => {
   const configuredBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "")
@@ -8,7 +6,7 @@ const resolveApiBaseUrl = () => {
     .replace(/\/$/, "");
 
   if (typeof window === "undefined") {
-    return configuredBaseUrl;
+    return configuredBaseUrl || "/api";
   }
 
   const { hostname } = window.location;
@@ -17,23 +15,23 @@ const resolveApiBaseUrl = () => {
     return configuredBaseUrl || LOCAL_API_BASE_URL;
   }
 
-  if (
-    hostname === "www.gozoshe.com" ||
-    hostname === "gozoshe.com" ||
-    hostname === "api.gozoshe.com"
-  ) {
-    return PRODUCTION_API_BASE_URL;
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
   }
 
   if (
+    hostname === "www.gozoshe.com" ||
+    hostname === "gozoshe.com" ||
+    hostname === "api.gozoshe.com" ||
     hostname === "gozoshe-staging.vercel.app" ||
     hostname === "goose-web-seven.vercel.app" ||
     hostname.includes("staging")
   ) {
-    return STAGING_API_BASE_URL;
+    // Use the same-origin Vercel rewrite so auth cookies stay first-party.
+    return "/api";
   }
 
-  return configuredBaseUrl || STAGING_API_BASE_URL;
+  return "/api";
 };
 
 export const API_BASE_URL = resolveApiBaseUrl();
