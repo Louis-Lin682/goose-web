@@ -379,13 +379,14 @@ export const AdminOrders = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 rounded-3xl bg-zinc-50 p-4 md:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 rounded-3xl bg-zinc-50 p-4 md:grid-cols-6">
               {[
                 ["待確認", filteredStatusCounts.PENDING],
                 ["已付款待處理", filteredStatusCounts.PAID],
                 ["處理中", filteredStatusCounts.PROCESSING],
                 ["已出貨", filteredStatusCounts.SHIPPED],
                 ["已完成", filteredStatusCounts.COMPLETED],
+                ["已取消", filteredStatusCounts.CANCELLED],
               ].map(([label, value]) => (
                 <div key={label} className="min-w-[86px] text-center">
                   <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-400">
