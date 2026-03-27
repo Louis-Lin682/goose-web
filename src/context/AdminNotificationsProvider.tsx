@@ -35,6 +35,7 @@ export const AdminNotificationsProvider = ({
   const hasHydratedRef = useRef(false);
   const previousUnreadCountRef = useRef(0);
   const latestFetchIdRef = useRef(0);
+  const authActivatedAtRef = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isSoundEnabledRef = useRef(false);
   const isSoundUnlockedRef = useRef(false);
@@ -152,6 +153,12 @@ export const AdminNotificationsProvider = ({
         (fetchError.message.includes("401") ||
           fetchError.message.toLowerCase().includes("unauthorized"))
       ) {
+        // Give freshly-created sessions a brief window before treating a 401
+        // as a hard timeout; cross-site cookies can lag behind the redirect.
+        if (Date.now() - authActivatedAtRef.current < 3000) {
+          return;
+        }
+
         setNotifications([]);
         setUnreadCount(0);
         hasHydratedRef.current = false;
@@ -211,16 +218,22 @@ export const AdminNotificationsProvider = ({
       setUnreadCount(0);
       setError(null);
       setIsLoading(false);
+      authActivatedAtRef.current = 0;
       return;
     }
 
-    void refreshNotifications();
+    authActivatedAtRef.current = Date.now();
+
+    const initialTimer = window.setTimeout(() => {
+      void refreshNotifications();
+    }, 1200);
 
     const timer = window.setInterval(() => {
       void refreshNotifications({ silent: true });
     }, POLL_INTERVAL_MS);
 
     return () => {
+      window.clearTimeout(initialTimer);
       window.clearInterval(timer);
     };
   }, [isAdminActive, signOut]);

@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { LogOut, Menu as MenuIcon, ShoppingCart, X } from "lucide-react";
@@ -39,8 +39,22 @@ const LineAuthButton = ({ mode }: { mode: AuthMode }) => (
   </div>
 );
 
-const NoticeModal = ({ onClose }: { onClose: () => void }) => (
-  <div className="fixed inset-0 z-[110] bg-black/50 px-8 py-8" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+const NoticeModal = ({ onClose }: { onClose: () => void }) => {
+  const shouldCloseRef = useRef(false);
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] bg-black/50 px-8 py-8"
+      onMouseDown={(event) => {
+        shouldCloseRef.current = event.target === event.currentTarget;
+      }}
+      onMouseUp={(event) => {
+        if (shouldCloseRef.current && event.target === event.currentTarget) {
+          onClose();
+        }
+        shouldCloseRef.current = false;
+      }}
+    >
     <div className="mx-auto flex h-full max-w-4xl items-center justify-center">
       <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.98 }} transition={{ duration: 0.22 }} onClick={(event) => event.stopPropagation()} className="max-h-[85vh] w-full overflow-hidden rounded-[2rem] bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-5">
@@ -64,8 +78,9 @@ const NoticeModal = ({ onClose }: { onClose: () => void }) => (
         </div>
       </motion.div>
     </div>
-  </div>
-);
+    </div>
+  );
+};
 
 const AuthModal = ({
   mode,
@@ -79,6 +94,7 @@ const AuthModal = ({
   onLoginSuccess: (isAdmin: boolean) => void;
 }) => {
   const navigate = useNavigate();
+  const shouldCloseRef = useRef(false);
   const { signIn } = useAuth();
   const [loginForm, setLoginForm] = useState<LoginFormState>(initialLoginForm);
   const [registerForm, setRegisterForm] = useState<RegisterFormState>(initialRegisterForm);
@@ -164,7 +180,18 @@ const AuthModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[115] bg-black/55 px-8 py-6" onClick={(event) => { if (event.target === event.currentTarget) handleClose(); }}>
+    <div
+      className="fixed inset-0 z-[115] bg-black/55 px-8 py-6"
+      onMouseDown={(event) => {
+        shouldCloseRef.current = event.target === event.currentTarget;
+      }}
+      onMouseUp={(event) => {
+        if (shouldCloseRef.current && event.target === event.currentTarget) {
+          handleClose();
+        }
+        shouldCloseRef.current = false;
+      }}
+    >
       <div className="mx-auto flex h-full max-w-lg items-center justify-center">
         <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.98 }} transition={{ duration: 0.22 }} onClick={(event) => event.stopPropagation()} className="flex h-[min(88vh,44rem)] w-full flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl">
           <div className="shrink-0 border-b border-zinc-100 px-5 py-5 md:px-6">
