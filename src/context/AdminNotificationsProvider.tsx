@@ -18,7 +18,7 @@ import { AdminNotificationsContext } from "./AdminNotificationsContext";
 
 const POLL_INTERVAL_MS = 12000;
 const NOTIFICATION_SOUND_PATH = "/mp3/newmessage.mp3";
-const AUTO_NOTIFICATION_REFRESH_DISABLED = true;
+const AUTO_NOTIFICATION_REFRESH_DISABLED = false;
 
 export const AdminNotificationsProvider = ({
   children,

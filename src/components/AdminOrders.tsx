@@ -355,40 +355,8 @@ export const AdminOrders = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <main className="min-h-screen bg-white px-6 pb-24 pt-40">
-        <div className="mx-auto max-w-6xl rounded-[2rem] border border-zinc-100 bg-zinc-50 px-8 py-16 text-center">
-          <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
-            Admin
-          </p>
-          <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
-            請先登入管理員帳號
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-500">
-            登入後即可查看訂單、付款狀態與出貨進度，並直接更新訂單處理狀態。
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  if (!user?.isAdmin) {
-    return (
-      <main className="min-h-screen bg-white px-6 pb-24 pt-40">
-        <div className="mx-auto max-w-6xl rounded-[2rem] border border-zinc-100 bg-zinc-50 px-8 py-16 text-center">
-          <p className="text-xs font-black uppercase tracking-[0.4em] text-orange-600">
-            Admin
-          </p>
-          <h1 className="mt-3 text-3xl font-black tracking-tight text-zinc-900 md:text-5xl">
-            你目前不是管理員
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-500">
-            只有具備管理員權限的帳號可以查看後台訂單管理頁面。
-          </p>
-        </div>
-      </main>
-    );
+  if (!isAuthenticated || !user?.isAdmin) {
+    return null;
   }
 
   return (

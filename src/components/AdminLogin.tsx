@@ -1,4 +1,5 @@
 import { type FormEvent, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, LockKeyhole, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,7 +88,9 @@ export const AdminLogin = () => {
 
       if (!currentUser?.isAdmin) {
         await logoutUser().catch(() => undefined);
-        signOut();
+        flushSync(() => {
+          signOut();
+        });
         setFeedback({
           type: "error",
           message: "管理員請改由後台登入頁登入。",
@@ -95,7 +98,9 @@ export const AdminLogin = () => {
         return;
       }
 
-      signIn(currentUser);
+      flushSync(() => {
+        signIn(currentUser);
+      });
       setFeedback({
         type: "success",
         message: "登入成功，正在進入後台...",
