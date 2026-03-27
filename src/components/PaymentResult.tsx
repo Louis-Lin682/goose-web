@@ -10,11 +10,37 @@ import {
 type PaymentResultState = "success" | "cancelled" | "failed";
 
 const CANCEL_KEYWORDS = ["取消", "cancel", "canceled", "cancelled", "aborted"];
+const CART_STORAGE_PREFIX = "goose.cart.items";
+
+const clearStoredCarts = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const keysToRemove: string[] = [];
+
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+
+    if (!key) {
+      continue;
+    }
+
+    if (key === CART_STORAGE_PREFIX || key.startsWith(`${CART_STORAGE_PREFIX}.`)) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => {
+    window.localStorage.removeItem(key);
+  });
+};
 
 const getResultState = (
   rtnCode: string | null,
   rtnMsg: string | null,
   simulatedOrderNumber: string | null,
+  hasPendingPayment: boolean,
 ): PaymentResultState => {
   if (rtnCode === "1" || Boolean(simulatedOrderNumber)) {
     return "success";
@@ -22,6 +48,10 @@ const getResultState = (
 
   const normalizedMessage = (rtnMsg ?? "").toLowerCase();
   if (CANCEL_KEYWORDS.some((keyword) => normalizedMessage.includes(keyword))) {
+    return "cancelled";
+  }
+
+  if (!rtnCode && hasPendingPayment) {
     return "cancelled";
   }
 
@@ -100,7 +130,12 @@ export const PaymentResult = () => {
       pendingPayment?.orderNumber ??
       null;
     const paymentType = searchParams.get("PaymentType");
-    const state = getResultState(rtnCode, rtnMsg, simulatedOrderNumber);
+    const state = getResultState(
+      rtnCode,
+      rtnMsg,
+      simulatedOrderNumber,
+      Boolean(pendingPayment),
+    );
 
     return {
       state,
@@ -119,6 +154,7 @@ export const PaymentResult = () => {
     if (result.isSuccess && !hasHandledSuccessRef.current) {
       hasHandledSuccessRef.current = true;
       clearPendingPayment();
+      clearStoredCarts();
       clearCart();
     }
   }, [clearCart, params, result.isSuccess]);
