@@ -58,10 +58,10 @@ export const AdminLogin = () => {
     };
 
     try {
-      await loginUser(payload);
-      const response = await getCurrentUser();
+      const loginResponse = await loginUser(payload);
+      const currentUser = loginResponse.user ?? (await getCurrentUser()).user;
 
-      if (!response.user?.isAdmin) {
+      if (!currentUser?.isAdmin) {
         await logoutUser().catch(() => undefined);
         signOut();
         setFeedback({
@@ -71,7 +71,7 @@ export const AdminLogin = () => {
         return;
       }
 
-      signIn(response.user);
+      signIn(currentUser);
       setFeedback({
         type: "success",
         message: "登入成功，正在前往後台...",
