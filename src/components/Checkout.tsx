@@ -383,24 +383,15 @@ export const Checkout = () => {
   ) => {
     setSubmitMessage(null);
     setSubmitError(null);
-    setForm((prev) => {
-      const nextForm = { ...prev, [field]: value };
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
 
-      if (
-        field === "recipientName" ||
-        field === "recipientPhone" ||
-        field === "recipientEmail" ||
-        field === "recipientAddress"
-      ) {
-        setTouchedFields((current) => ({ ...current, [field]: true }));
-        setFieldErrors((current) => ({
-          ...current,
-          [field]: validateCheckoutField(field, String(value), nextForm.deliveryMethod),
-        }));
-      }
-
-      return nextForm;
-    });
+  const handleFieldBlur = (field: CheckoutField) => {
+    setTouchedFields((current) => ({ ...current, [field]: true }));
+    setFieldErrors((current) => ({
+      ...current,
+      [field]: validateCheckoutField(field, form[field], form.deliveryMethod),
+    }));
   };
 
   const handleDeliveryMethodChange = (nextMethod: OrderDeliveryMethod) => {
@@ -421,7 +412,7 @@ export const Checkout = () => {
     setFieldErrors((prev) => ({
       ...prev,
       recipientAddress:
-        touchedFields.recipientAddress || nextMethod === "home"
+        touchedFields.recipientAddress
           ? validateCheckoutField("recipientAddress", form.recipientAddress, nextMethod)
           : undefined,
     }));
@@ -663,6 +654,7 @@ export const Checkout = () => {
                     type="text"
                     value={form.recipientName}
                     onChange={(event) => handleFieldChange("recipientName", event.target.value)}
+                    onBlur={() => handleFieldBlur("recipientName")}
                     required
                     placeholder="請輸入收件人姓名"
                     className={inputClassName}
@@ -681,6 +673,7 @@ export const Checkout = () => {
                     type="tel"
                     value={form.recipientPhone}
                     onChange={(event) => handleFieldChange("recipientPhone", event.target.value)}
+                    onBlur={() => handleFieldBlur("recipientPhone")}
                     required
                     placeholder="09xxxxxxxx"
                     className={inputClassName}
@@ -701,6 +694,7 @@ export const Checkout = () => {
                   type="email"
                   value={form.recipientEmail}
                   onChange={(event) => handleFieldChange("recipientEmail", event.target.value)}
+                  onBlur={() => handleFieldBlur("recipientEmail")}
                   required
                   placeholder="you@example.com"
                   className={inputClassName}
@@ -722,6 +716,7 @@ export const Checkout = () => {
                       type="text"
                       value={form.recipientAddress}
                       onChange={(event) => handleFieldChange("recipientAddress", event.target.value)}
+                      onBlur={() => handleFieldBlur("recipientAddress")}
                       required
                       placeholder="請輸入完整收件地址"
                       className={inputClassName}
