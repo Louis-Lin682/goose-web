@@ -88,12 +88,11 @@ export const PaymentResult = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    clearPendingPayment();
-
     if (!result.isSuccess || hasHandledSuccess) {
       return;
     }
 
+    clearPendingPayment();
     clearStoredCarts();
     clearCart();
     setHasHandledSuccess(true);
