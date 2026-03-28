@@ -57,8 +57,20 @@ export const AdminNotifications = () => {
     if (!isRead) {
       await markAsRead(notificationId);
     }
+  };
 
-    navigate("/admin/orders");
+  const navigateToOrder = async (
+    notificationId: string,
+    orderNumber: string,
+    isRead: boolean,
+  ) => {
+    try {
+      await openOrderFromNotification(notificationId, isRead);
+    } catch {
+      return;
+    }
+
+    navigate(`/admin/orders?focusOrder=${encodeURIComponent(orderNumber)}`);
   };
 
   const error = actionError ?? notificationsError;
@@ -263,8 +275,12 @@ export const AdminNotifications = () => {
                             to="/admin/orders"
                             onClick={async (event) => {
                               event.preventDefault();
-                              await openOrderFromNotification(
+                              if (!notification.orderNumber) {
+                                return;
+                              }
+                              await navigateToOrder(
                                 notification.id,
+                                notification.orderNumber,
                                 notification.isRead,
                               );
                             }}

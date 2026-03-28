@@ -1,5 +1,6 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { AdminActionLoadingOverlay } from "./AdminActionLoadingOverlay";
 import { useAuth } from "../context/useAuth";
 import { useAdminNotifications } from "../context/useAdminNotifications";
@@ -145,10 +146,12 @@ const isOrderInRange = (createdAt: string, startDate: string, endDate: string) =
 };
 
 export const AdminOrders = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthReady, isAuthenticated, user } = useAuth();
   const { unreadCount, markNotificationsForOrderAsRead } = useAdminNotifications();
   const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [highlightedOrderId, setHighlightedOrderId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
@@ -162,6 +165,8 @@ export const AdminOrders = () => {
   const [appliedStartDate, setAppliedStartDate] = useState("");
   const [appliedEndDate, setAppliedEndDate] = useState("");
   const [isFilterLoading, setIsFilterLoading] = useState(false);
+  const orderCardRefs = useRef<Record<string, HTMLElement | null>>({});
+  const focusedOrderNumber = searchParams.get("focusOrder")?.trim() ?? "";
 
   useEffect(() => {
     const range = resolvePresetRange("today");
@@ -276,6 +281,55 @@ export const AdminOrders = () => {
       ),
     [filteredOrders],
   );
+
+  useEffect(() => {
+    if (!focusedOrderNumber || orders.length === 0) {
+      return;
+    }
+
+    const targetOrder = orders.find(
+      (order) => order.orderNumber === focusedOrderNumber,
+    );
+
+    if (!targetOrder) {
+      return;
+    }
+
+    setDatePreset("custom");
+    setStatusFilterInput("");
+    setOrderNumberInput(targetOrder.orderNumber);
+    setStartDateInput("");
+    setEndDateInput("");
+    setAppliedStatusFilter("");
+    setAppliedOrderNumberFilter(targetOrder.orderNumber);
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    setExpandedOrderId(targetOrder.id);
+    setHighlightedOrderId(targetOrder.id);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("focusOrder");
+    setSearchParams(nextParams, { replace: true });
+  }, [focusedOrderNumber, orders, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!highlightedOrderId) {
+      return;
+    }
+
+    const targetCard = orderCardRefs.current[highlightedOrderId];
+    if (targetCard) {
+      targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    const timer = window.setTimeout(() => {
+      setHighlightedOrderId((currentId) =>
+        currentId === highlightedOrderId ? null : currentId,
+      );
+    }, 4500);
+
+    return () => window.clearTimeout(timer);
+  }, [filteredOrders, highlightedOrderId]);
 
   const toggleOrder = (orderId: string) => {
     setExpandedOrderId((currentId) => (currentId === orderId ? null : orderId));
@@ -538,7 +592,14 @@ export const AdminOrders = () => {
                 return (
                   <article
                     key={order.id}
-                    className="overflow-hidden rounded-[2rem] border border-zinc-100 bg-white shadow-sm"
+                    ref={(node) => {
+                      orderCardRefs.current[order.id] = node;
+                    }}
+                    className={`overflow-hidden rounded-[2rem] border bg-white shadow-sm transition-[border-color,box-shadow] duration-300 ${
+                      highlightedOrderId === order.id
+                        ? "border-orange-300 shadow-[0_0_0_3px_rgba(249,115,22,0.12)]"
+                        : "border-zinc-100"
+                    }`}
                   >
                     <div className="px-5 py-5 md:px-6">
                       <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
