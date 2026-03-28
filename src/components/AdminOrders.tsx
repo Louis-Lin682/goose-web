@@ -152,6 +152,7 @@ export const AdminOrders = () => {
   const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [highlightedOrderId, setHighlightedOrderId] = useState<string | null>(null);
+  const [isFocusedOrderView, setIsFocusedOrderView] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
@@ -298,6 +299,12 @@ export const AdminOrders = () => {
     [filteredOrders],
   );
 
+  const exitFocusedOrderView = () => {
+    setIsFocusedOrderView(false);
+    setOrderNumberInput("");
+    setAppliedOrderNumberFilter("");
+  };
+
   useEffect(() => {
     if (!focusedOrderNumber || orders.length === 0) {
       return;
@@ -322,6 +329,7 @@ export const AdminOrders = () => {
     setAppliedEndDate("");
     setExpandedOrderId(targetOrder.id);
     setHighlightedOrderId(targetOrder.id);
+    setIsFocusedOrderView(true);
 
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("focusOrder");
@@ -380,6 +388,7 @@ export const AdminOrders = () => {
 
   const applyFilters = () => {
     setIsFilterLoading(true);
+    setIsFocusedOrderView(false);
     setAppliedStatusFilter(statusFilterInput);
     setAppliedOrderNumberFilter(orderNumberInput);
     setAppliedStartDate(startDateInput);
@@ -390,6 +399,7 @@ export const AdminOrders = () => {
 
   const clearFilters = () => {
     setIsFilterLoading(true);
+    setIsFocusedOrderView(false);
     const range = resolvePresetRange("today");
     setDatePreset("today");
     setStatusFilterInput("");
@@ -406,6 +416,9 @@ export const AdminOrders = () => {
 
   const handleDatePresetChange = (nextPreset: Exclude<OrderDatePreset, "custom">) => {
     setIsFilterLoading(true);
+    if (isFocusedOrderView) {
+      exitFocusedOrderView();
+    }
     setDatePreset(nextPreset);
     window.setTimeout(() => setIsFilterLoading(false), 280);
   };
@@ -514,9 +527,12 @@ export const AdminOrders = () => {
               <div className="grid gap-3 xl:grid-cols-[0.75fr_1fr_1fr_1.1fr_auto_auto]">
                 <select
                   value={statusFilterInput}
-                  onChange={(event) =>
-                    setStatusFilterInput(event.target.value as "" | OrderStatus)
-                  }
+                  onChange={(event) => {
+                    if (isFocusedOrderView) {
+                      exitFocusedOrderView();
+                    }
+                    setStatusFilterInput(event.target.value as "" | OrderStatus);
+                  }}
                   className="h-10 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 outline-none transition-colors focus:border-orange-400"
                 >
                   <option value="">全部狀態</option>
@@ -531,6 +547,9 @@ export const AdminOrders = () => {
                   type="date"
                   value={startDateInput}
                   onChange={(event) => {
+                    if (isFocusedOrderView) {
+                      exitFocusedOrderView();
+                    }
                     setDatePreset("custom");
                     setStartDateInput(event.target.value);
                   }}
@@ -543,6 +562,9 @@ export const AdminOrders = () => {
                   type="date"
                   value={endDateInput}
                   onChange={(event) => {
+                    if (isFocusedOrderView) {
+                      exitFocusedOrderView();
+                    }
                     setDatePreset("custom");
                     setEndDateInput(event.target.value);
                   }}
@@ -554,7 +576,10 @@ export const AdminOrders = () => {
                 <input
                   type="text"
                   value={orderNumberInput}
-                  onChange={(event) => setOrderNumberInput(event.target.value)}
+                  onChange={(event) => {
+                    setIsFocusedOrderView(false);
+                    setOrderNumberInput(event.target.value);
+                  }}
                   placeholder="搜尋訂單編號，例如 GO2026..."
                   className="h-10 w-full rounded-full border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-orange-400"
                 />
