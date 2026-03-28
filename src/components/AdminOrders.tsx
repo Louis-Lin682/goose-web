@@ -10,7 +10,7 @@ import type { OrderHistoryEntry, OrderStatus } from "../types/order";
 type OrderDatePreset = "today" | "this-month" | "last-month" | "custom";
 
 const MIN_ACTION_LOADING_MS = 650;
-const REFRESH_INTERVAL_MS = 30 * 1000;
+const REFRESH_INTERVAL_MS = 10 * 1000;
 
 const wait = (ms: number) =>
   new Promise((resolve) => window.setTimeout(resolve, ms));
