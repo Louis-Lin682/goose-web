@@ -46,6 +46,7 @@ type CheckoutField =
   | "recipientAddress";
 
 type CheckoutFieldErrors = Partial<Record<CheckoutField, string>>;
+type CheckoutTouchedFields = Partial<Record<CheckoutField, boolean>>;
 
 const inputClassName =
   "h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-orange-400";
@@ -171,6 +172,80 @@ const resolveCheckoutFieldErrors = (
   return fieldErrors;
 };
 
+const validateCheckoutField = (
+  field: CheckoutField,
+  value: string,
+  deliveryMethod: OrderDeliveryMethod,
+): string | undefined => {
+  const trimmedValue = value.trim();
+
+  if (field === "recipientName") {
+    if (!trimmedValue) {
+      return "請輸入收件人姓名。";
+    }
+
+    return undefined;
+  }
+
+  if (field === "recipientPhone") {
+    if (!trimmedValue) {
+      return "請輸入正確的手機號碼。";
+    }
+
+    if (!/^09\d{8}$/.test(trimmedValue)) {
+      return "請輸入正確的手機號碼。";
+    }
+
+    return undefined;
+  }
+
+  if (field === "recipientEmail") {
+    if (!trimmedValue) {
+      return "請輸入正確的 Email。";
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue)) {
+      return "請輸入正確的 Email。";
+    }
+
+    return undefined;
+  }
+
+  if (field === "recipientAddress") {
+    if (deliveryMethod === "pickup") {
+      return undefined;
+    }
+
+    if (!trimmedValue) {
+      return "請輸入完整收件地址。";
+    }
+  }
+
+  return undefined;
+};
+
+const collectCheckoutFieldErrors = (
+  form: CheckoutFormState,
+  deliveryMethod: OrderDeliveryMethod,
+): CheckoutFieldErrors => {
+  const fields: CheckoutField[] = [
+    "recipientName",
+    "recipientPhone",
+    "recipientEmail",
+    "recipientAddress",
+  ];
+
+  return fields.reduce<CheckoutFieldErrors>((errors, field) => {
+    const nextError = validateCheckoutField(field, form[field], deliveryMethod);
+
+    if (nextError) {
+      errors[field] = nextError;
+    }
+
+    return errors;
+  }, {});
+};
+
 const submitEcpayCheckout = (action: string, fields: Record<string, string>) => {
   const form = document.createElement("form");
   form.method = "POST";
@@ -287,6 +362,7 @@ export const Checkout = () => {
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<CheckoutFieldErrors>({});
+  const [touchedFields, setTouchedFields] = useState<CheckoutTouchedFields>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrderNumber, setCompletedOrderNumber] = useState<string | null>(null);
   const [form, setForm] = useState<CheckoutFormState>(() => buildInitialForm());
@@ -307,14 +383,29 @@ export const Checkout = () => {
   ) => {
     setSubmitMessage(null);
     setSubmitError(null);
-    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const nextForm = { ...prev, [field]: value };
+
+      if (
+        field === "recipientName" ||
+        field === "recipientPhone" ||
+        field === "recipientEmail" ||
+        field === "recipientAddress"
+      ) {
+        setTouchedFields((current) => ({ ...current, [field]: true }));
+        setFieldErrors((current) => ({
+          ...current,
+          [field]: validateCheckoutField(field, String(value), nextForm.deliveryMethod),
+        }));
+      }
+
+      return nextForm;
+    });
   };
 
   const handleDeliveryMethodChange = (nextMethod: OrderDeliveryMethod) => {
     setSubmitMessage(null);
     setSubmitError(null);
-    setFieldErrors({});
     setForm((prev) => ({
       ...prev,
       deliveryMethod: nextMethod,
@@ -326,6 +417,13 @@ export const Checkout = () => {
             pickupStoreAddress: "",
           }
         : {}),
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      recipientAddress:
+        touchedFields.recipientAddress || nextMethod === "home"
+          ? validateCheckoutField("recipientAddress", form.recipientAddress, nextMethod)
+          : undefined,
     }));
   };
 
@@ -358,7 +456,20 @@ export const Checkout = () => {
     setIsSubmitting(true);
     setSubmitMessage(null);
     setSubmitError(null);
-    setFieldErrors({});
+    const nextFieldErrors = collectCheckoutFieldErrors(form, form.deliveryMethod);
+
+    setTouchedFields({
+      recipientName: true,
+      recipientPhone: true,
+      recipientEmail: true,
+      recipientAddress: true,
+    });
+    setFieldErrors(nextFieldErrors);
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const response = await createOrder(payload);
