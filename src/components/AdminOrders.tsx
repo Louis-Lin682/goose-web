@@ -232,10 +232,26 @@ export const AdminOrders = () => {
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshOrdersFromNotifications();
+      }
+    };
+
+    const handlePageShow = () => {
+      void refreshOrdersFromNotifications();
+    };
+
     void refreshOrdersFromNotifications();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handlePageShow);
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
       isMounted = false;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handlePageShow);
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, [isAuthReady, isAuthenticated, unreadCount, user?.isAdmin]);
 

@@ -191,8 +191,14 @@ export const Orders = () => {
       }
     };
 
+    const handlePageShow = () => {
+      void refreshOrders();
+    };
+
     startPolling();
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handlePageShow);
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
       isMounted = false;
@@ -200,6 +206,8 @@ export const Orders = () => {
         window.clearInterval(intervalId);
       }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handlePageShow);
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, [isAuthReady, isAuthenticated]);
 

@@ -11,6 +11,7 @@ import {
   clearPendingPayment,
   createEcpayCheckout,
   createOrder,
+  getOrderByIdFromHistory,
   savePendingPayment,
 } from "../lib/orders";
 import type {
@@ -381,8 +382,42 @@ export const Checkout = () => {
   const finalTotal = subtotal + shippingFee + codFee;
 
   useEffect(() => {
-    const syncPendingPayment = () => {
+    if (!isAuthenticated) {
+      setPendingPayment(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const syncPendingPayment = async () => {
       const nextPendingPayment = getPendingPayment();
+
+      if (!nextPendingPayment) {
+        if (isMounted) {
+          setPendingPayment(null);
+        }
+        return;
+      }
+
+      const pendingOrder = await getOrderByIdFromHistory(nextPendingPayment.orderId).catch(
+        () => null,
+      );
+
+      if (!isMounted) {
+        return;
+      }
+
+      const shouldClearPendingPayment =
+        !pendingOrder ||
+        pendingOrder.paymentStatus === "PAID" ||
+        pendingOrder.status === "CANCELLED";
+
+      if (shouldClearPendingPayment) {
+        clearPendingPayment();
+        setPendingPayment(null);
+        return;
+      }
+
       setPendingPayment(nextPendingPayment);
 
       if (!nextPendingPayment) {
@@ -395,18 +430,29 @@ export const Checkout = () => {
       );
     };
 
-    syncPendingPayment();
+    void syncPendingPayment();
 
     const handlePageShow = () => {
-      syncPendingPayment();
+      void syncPendingPayment();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void syncPendingPayment();
+      }
     };
 
     window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("focus", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("focus", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const handleFieldChange = <K extends keyof CheckoutFormState>(
     field: K,

@@ -89,6 +89,11 @@ export const getOrderHistory = async (): Promise<OrderHistoryResponse> => {
   return apiRequest<OrderHistoryResponse>("/orders");
 };
 
+export const getOrderByIdFromHistory = async (orderId: string) => {
+  const response = await getOrderHistory();
+  return response.orders.find((order) => order.id === orderId) ?? null;
+};
+
 export const getAdminOrders = async (): Promise<OrderHistoryResponse> => {
   return apiRequest<OrderHistoryResponse>("/admin/orders");
 };
