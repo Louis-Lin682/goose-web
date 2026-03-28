@@ -249,6 +249,11 @@ const collectCheckoutFieldErrors = (
   }, {});
 };
 
+const hasIncompleteRecipientDetails = (
+  form: CheckoutFormState,
+  deliveryMethod: OrderDeliveryMethod,
+) => Object.keys(collectCheckoutFieldErrors(form, deliveryMethod)).length > 0;
+
 const submitEcpayCheckout = (action: string, fields: Record<string, string>) => {
   const form = document.createElement("form");
   form.method = "POST";
@@ -380,6 +385,10 @@ export const Checkout = () => {
   const shippingFee = getShippingFee(subtotal, form.deliveryMethod);
   const codFee = getCodFee(subtotal, form.deliveryMethod, form.paymentMethod);
   const finalTotal = subtotal + shippingFee + codFee;
+  const hasPendingPaymentValidationErrors =
+    Boolean(pendingPayment) &&
+    form.paymentMethod === "online" &&
+    hasIncompleteRecipientDetails(form, form.deliveryMethod);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -1007,7 +1016,7 @@ export const Checkout = () => {
                     ? handleResumePendingPayment
                     : undefined
                 }
-                disabled={isSubmitting}
+                disabled={isSubmitting || hasPendingPaymentValidationErrors}
                 className="h-12 rounded-full bg-zinc-900 px-6 text-sm text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
               >
                 {isSubmitting

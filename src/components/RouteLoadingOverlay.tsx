@@ -8,6 +8,7 @@ export const RouteLoadingOverlay = () => {
   const { pathname } = useLocation();
   const [isVisible, setIsVisible] = useState(false);
   const hasMountedRef = useRef(false);
+  const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!hasMountedRef.current) {
@@ -19,15 +20,46 @@ export const RouteLoadingOverlay = () => {
       setIsVisible(true);
     });
 
-    const timeoutId = window.setTimeout(() => {
+    timeoutRef.current = window.setTimeout(() => {
       setIsVisible(false);
+      timeoutRef.current = null;
     }, LOADING_DURATION_MS);
 
     return () => {
       window.cancelAnimationFrame(frameId);
-      window.clearTimeout(timeoutId);
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
   }, [pathname]);
+
+  useEffect(() => {
+    const hideOverlay = () => {
+      setIsVisible(false);
+
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        hideOverlay();
+      }
+    };
+
+    window.addEventListener("pageshow", hideOverlay);
+    window.addEventListener("focus", hideOverlay);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pageshow", hideOverlay);
+      window.removeEventListener("focus", hideOverlay);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   return (
     <AnimatePresence>
