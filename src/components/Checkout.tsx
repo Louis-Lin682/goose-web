@@ -430,6 +430,22 @@ export const Checkout = () => {
       return;
     }
 
+    const nextFieldErrors = collectCheckoutFieldErrors(form, form.deliveryMethod);
+
+    setTouchedFields({
+      recipientName: true,
+      recipientPhone: true,
+      recipientEmail: true,
+      recipientAddress: true,
+    });
+    setFieldErrors(nextFieldErrors);
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setSubmitMessage(null);
+      setSubmitError("請先完成收件資訊，再重新前往付款。");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     setSubmitMessage(`正在重新導向至綠界付款頁，訂單編號 ${pendingPayment.orderNumber}...`);

@@ -45,15 +45,31 @@ export const apiRequest = async <T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> => {
-  const response = await fetch(buildUrl(path), {
-    credentials: "include",
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...init.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+  let response: Response;
+
+  try {
+    response = await fetch(buildUrl(path), {
+      credentials: "include",
+      ...init,
+      signal: init.signal ?? controller.signal,
+      headers: {
+        Accept: "application/json",
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Request timeout");
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   const rawBody = await response.text();
   const data = rawBody ? safeParseJson(rawBody) : null;
