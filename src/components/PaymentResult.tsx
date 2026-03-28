@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/useCart";
 import { clearPendingPayment } from "../lib/orders";
@@ -64,7 +64,7 @@ const getAccentClasses = (state: PaymentResultState) =>
 export const PaymentResult = () => {
   const [searchParams] = useSearchParams();
   const { clearCart } = useCart();
-  const [hasHandledSuccess, setHasHandledSuccess] = useState(false);
+  const hasHandledSuccessRef = useRef(false);
 
   const result = useMemo(() => {
     const rtnCode = searchParams.get("RtnCode");
@@ -88,15 +88,15 @@ export const PaymentResult = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!result.isSuccess || hasHandledSuccess) {
+    if (!result.isSuccess || hasHandledSuccessRef.current) {
       return;
     }
 
     clearPendingPayment();
     clearStoredCarts();
     clearCart();
-    setHasHandledSuccess(true);
-  }, [clearCart, hasHandledSuccess, result.isSuccess]);
+    hasHandledSuccessRef.current = true;
+  }, [clearCart, result.isSuccess]);
 
   const accentClasses = getAccentClasses(result.state);
 
