@@ -41,55 +41,107 @@ const buildUrl = (path: string) => {
   return `${API_BASE_URL}${normalizedPath}`;
 };
 
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+const resolveTimeoutMs = (path: string) => {
+  if (path === "/auth/me") {
+    return 30000;
+  }
+
+  if (path === "/auth/login") {
+    return 25000;
+  }
+
+  return 15000;
+};
+
+const isRetryableAuthRequest = (path: string, method: string) => {
+  return (
+    (path === "/auth/me" && method === "GET") ||
+    (path === "/auth/login" && method === "POST")
+  );
+};
+
 export const apiRequest = async <T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> => {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+  const method = (init.method ?? "GET").toUpperCase();
+  const timeoutMs = resolveTimeoutMs(path);
+  const maxAttempts = isRetryableAuthRequest(path, method) ? 2 : 1;
+  const fetchHeaders = {
+    Accept: "application/json",
+    ...(init.body ? { "Content-Type": "application/json" } : {}),
+    ...init.headers,
+  };
 
-  let response: Response;
+  let lastError: unknown = null;
 
-  try {
-    response = await fetch(buildUrl(path), {
-      credentials: "include",
-      ...init,
-      signal: init.signal ?? controller.signal,
-      headers: {
-        Accept: "application/json",
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
-    });
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Request timeout");
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(buildUrl(path), {
+        credentials: "include",
+        ...init,
+        signal: init.signal ?? controller.signal,
+        headers: fetchHeaders,
+      });
+
+      const rawBody = await response.text();
+      const data = rawBody ? safeParseJson(rawBody) : null;
+
+      if (!response.ok) {
+        const message =
+          typeof data === "object" &&
+          data !== null &&
+          "message" in data
+            ? Array.isArray(data.message)
+              ? data.message.join(" ")
+              : typeof data.message === "string"
+                ? data.message
+                : `Request failed (${response.status})`
+            : `Request failed (${response.status})`;
+
+        throw new Error(message);
+      }
+
+      return data as T;
+    } catch (error) {
+      const isTimeoutAbort =
+        error instanceof DOMException && error.name === "AbortError";
+      const isNetworkError =
+        error instanceof TypeError &&
+        error.message.toLowerCase().includes("fetch");
+
+      if (
+        attempt < maxAttempts &&
+        (isTimeoutAbort || isNetworkError)
+      ) {
+        lastError = error;
+        await wait(1200);
+        continue;
+      }
+
+      if (isTimeoutAbort) {
+        throw new Error("Request timeout");
+      }
+
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
-
-    throw error;
-  } finally {
-    window.clearTimeout(timeoutId);
   }
 
-  const rawBody = await response.text();
-  const data = rawBody ? safeParseJson(rawBody) : null;
-
-  if (!response.ok) {
-    const message =
-      typeof data === "object" &&
-      data !== null &&
-      "message" in data
-        ? Array.isArray(data.message)
-          ? data.message.join(" ")
-          : typeof data.message === "string"
-            ? data.message
-            : `Request failed (${response.status})`
-        : `Request failed (${response.status})`;
-
-    throw new Error(message);
+  if (lastError instanceof DOMException && lastError.name === "AbortError") {
+    throw new Error("Request timeout");
   }
 
-  return data as T;
+  throw lastError instanceof Error ? lastError : new Error("Request failed");
 };
 
 const safeParseJson = (value: string) => {
