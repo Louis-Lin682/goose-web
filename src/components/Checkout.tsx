@@ -192,11 +192,13 @@ const validateCheckoutField = (
 
   if (field === "recipientPhone") {
     if (!trimmedValue) {
-      return "請輸入正確的手機號碼。";
+      return "請輸入正確的聯絡電話。";
     }
 
-    if (!/^09\d{8}$/.test(trimmedValue)) {
-      return "請輸入正確的手機號碼。";
+    const normalizedPhone = trimmedValue.replace(/[\s()-]/g, "");
+
+    if (!/^\d{8,10}$/.test(normalizedPhone)) {
+      return "請輸入正確的聯絡電話。";
     }
 
     return undefined;
@@ -801,7 +803,7 @@ export const Checkout = () => {
                     onChange={(event) => handleFieldChange("recipientPhone", event.target.value)}
                     onBlur={() => handleFieldBlur("recipientPhone")}
                     required
-                    placeholder="09xxxxxxxx"
+                    placeholder="手機或市話"
                     className={inputClassName}
                   />
                   {fieldErrors.recipientPhone && (
