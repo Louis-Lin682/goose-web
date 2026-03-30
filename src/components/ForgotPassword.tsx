@@ -1,4 +1,4 @@
-﻿import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ type RequestState = {
 };
 
 type ResetState = {
-  token: string;
   password: string;
   confirmPassword: string;
 };
@@ -25,7 +24,6 @@ const initialRequestState = (): RequestState => ({
 });
 
 const initialResetState = (): ResetState => ({
-  token: "",
   password: "",
   confirmPassword: "",
 });
@@ -53,11 +51,14 @@ const formatExpiry = (value?: string) => {
 export const ForgotPassword = () => {
   const [searchParams] = useSearchParams();
   const tokenFromQuery = searchParams.get("token") ?? "";
-  const [requestForm, setRequestForm] = useState<RequestState>(initialRequestState);
-  const [resetForm, setResetForm] = useState<ResetState>(() => ({
-    ...initialResetState(),
-    token: tokenFromQuery,
-  }));
+  const isLocalDebugMode =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
+
+  const [requestForm, setRequestForm] =
+    useState<RequestState>(initialRequestState);
+  const [resetForm, setResetForm] = useState<ResetState>(initialResetState);
   const [requestFeedback, setRequestFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -71,22 +72,11 @@ export const ForgotPassword = () => {
   const [debugResetLink, setDebugResetLink] = useState<string | null>(null);
   const [debugResetExpiry, setDebugResetExpiry] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!tokenFromQuery) {
-      return;
-    }
-
-    setResetForm((prev) => ({
-      ...prev,
-      token: tokenFromQuery,
-    }));
-  }, [tokenFromQuery]);
-
   const formattedDebugExpiry = useMemo(
     () => formatExpiry(debugResetExpiry ?? undefined),
     [debugResetExpiry],
   );
-  const canReset = Boolean(tokenFromQuery || resetForm.token.trim());
+  const canReset = Boolean(tokenFromQuery);
 
   const handleRequestSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -105,12 +95,8 @@ export const ForgotPassword = () => {
         message: response.message,
       });
 
-      if (response.resetToken) {
-        setResetForm((prev) => ({
-          ...prev,
-          token: response.resetToken ?? prev.token,
-        }));
-        setDebugResetLink(response.resetLink ?? null);
+      if (isLocalDebugMode && response.resetLink) {
+        setDebugResetLink(response.resetLink);
         setDebugResetExpiry(response.expiresAt ?? null);
       }
     } catch (error) {
@@ -150,7 +136,7 @@ export const ForgotPassword = () => {
 
     try {
       const response = await resetPasswordRequest({
-        token: resetForm.token.trim(),
+        token: tokenFromQuery,
         password: resetForm.password,
       });
 
@@ -158,11 +144,7 @@ export const ForgotPassword = () => {
         type: "success",
         message: response.message,
       });
-      setResetForm({
-        token: "",
-        password: "",
-        confirmPassword: "",
-      });
+      setResetForm(initialResetState());
       setDebugResetLink(null);
       setDebugResetExpiry(null);
     } catch (error) {
@@ -171,7 +153,7 @@ export const ForgotPassword = () => {
         message:
           error instanceof Error
             ? error.message
-            : "重設失敗，請重新確認 reset token。",
+            : "重設失敗，請重新透過信件連結再試一次。",
       });
     } finally {
       setIsResetSubmitting(false);
@@ -189,7 +171,7 @@ export const ForgotPassword = () => {
             忘記密碼
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-600">
-            先輸入註冊用 Email 取得重設連結，收到信後再回來設定新密碼。
+            先輸入註冊用 Email 取得重設連結，收到信後再從信件中的連結回來設定新密碼。
           </p>
 
           <div className="mt-8">
@@ -221,11 +203,11 @@ export const ForgotPassword = () => {
                   </div>
                 )}
 
-                {debugResetLink && (
+                {isLocalDebugMode && debugResetLink && (
                   <div className="rounded-[1.75rem] border border-orange-200 bg-orange-50 px-5 py-4 text-sm text-zinc-700">
                     <div className="flex items-center gap-2 font-semibold text-zinc-900">
                       <Mail className="h-4 w-4 text-orange-600" />
-                      測試模式 Reset Link
+                      本機測試用 Reset Link
                     </div>
                     <p className="mt-3 break-all leading-6 text-zinc-600">
                       {debugResetLink}
@@ -243,28 +225,13 @@ export const ForgotPassword = () => {
                   disabled={isRequestSubmitting}
                   className="h-12 w-full rounded-2xl bg-zinc-900 text-sm text-white transition-transform hover:bg-zinc-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-zinc-400 disabled:active:scale-100"
                 >
-                  {isRequestSubmitting ? "送出中..." : "取得重設憑證"}
+                  {isRequestSubmitting ? "送出中..." : "寄送重設信"}
                 </Button>
               </form>
             ) : (
               <form className="space-y-5" onSubmit={handleResetSubmit}>
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-zinc-900">
-                    重設憑證
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={resetForm.token}
-                    onChange={(event) =>
-                      setResetForm((prev) => ({
-                        ...prev,
-                        token: event.target.value,
-                      }))
-                    }
-                    placeholder="貼上 token 或從 reset link 進來"
-                    className={inputClassName}
-                  />
+                <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-zinc-700">
+                  請為這次的密碼重設設定新密碼。
                 </div>
 
                 <div>
@@ -337,7 +304,6 @@ export const ForgotPassword = () => {
             )}
           </div>
         </section>
-
       </div>
     </main>
   );
