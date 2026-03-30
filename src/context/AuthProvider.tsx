@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       if (isRecoverableAuthError(error)) {
         try {
-          await wait(3000);
+          await wait(5000);
           const retryResponse = await getCurrentUser();
           setUser(retryResponse.user);
           setIsAuthReady(true);
@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (isRecoverableAuthError(error)) {
           try {
-            await wait(3000);
+            await wait(5000);
 
             if (!isMounted) {
               return;
