@@ -3,8 +3,6 @@ import { useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Minimize2, Play, Volume2, VolumeX, X } from "lucide-react";
 
-const PRODUCTION_HOSTS = new Set(["www.gozoshe.com", "gozoshe.com"]);
-
 export const FloatingBrandVideo = () => {
   const location = useLocation();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -12,15 +10,11 @@ export const FloatingBrandVideo = () => {
   const [isMuted, setIsMuted] = useState(true);
   const [hasManuallyClosed, setHasManuallyClosed] = useState(false);
 
-  const isProductionStorefront =
-    typeof window !== "undefined" && PRODUCTION_HOSTS.has(window.location.hostname);
-
   useEffect(() => {
-    if (isProductionStorefront) return;
     if (location.pathname === "/origin" && !hasManuallyClosed) {
       setIsExpanded(true);
     }
-  }, [hasManuallyClosed, isProductionStorefront, location.pathname]);
+  }, [hasManuallyClosed, location.pathname]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -35,10 +29,6 @@ export const FloatingBrandVideo = () => {
 
     video.pause();
   }, [isExpanded, isMuted]);
-
-  if (isProductionStorefront) {
-    return null;
-  }
 
   const handleOpen = () => {
     setHasManuallyClosed(false);
