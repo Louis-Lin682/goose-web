@@ -6,7 +6,7 @@ export const Hero = () => (
         <picture>
           <source media="(max-width: 767px)" srcSet="/banner/banner_goose_m.png" />
           <img
-            src="/banner/banner_goose.png"
+            src="/banner/banner_goose.jpg"
             alt="Hero Background"
             className="absolute inset-0 h-full w-full object-cover opacity-80"
           />
