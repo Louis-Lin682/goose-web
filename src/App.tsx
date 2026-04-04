@@ -98,16 +98,16 @@ function App() {
       <SessionTimeoutManager />
       <Routes>
         <Route element={<StorefrontLayout />}>
-          <Route path="/" element={isProductionStorefront ? <MaintenanceHome /> : <main><Hero /><AboutPreview /><Menu /></main>} />
-          <Route path="/origin" element={isProductionStorefront ? <MaintenanceHome /> : <GooseDetail />} />
-          <Route path="/store" element={isProductionStorefront ? <MaintenanceHome /> : <StoreInfo />} />
-          <Route path="/orders" element={isProductionStorefront ? <MaintenanceHome /> : <Orders />} />
-          <Route path="/forgot-password" element={isProductionStorefront ? <MaintenanceHome /> : <ForgotPassword />} />
-          <Route path="/auth/line/complete" element={isProductionStorefront ? <MaintenanceHome /> : <LineAuthComplete />} />
-          <Route path="/payment/ecpay/result" element={isProductionStorefront ? <MaintenanceHome /> : <PaymentResult />} />
+          <Route path="/" element={<main><Hero /><AboutPreview /><Menu /></main>} />
+          <Route path="/origin" element={<GooseDetail />} />
+          <Route path="/store" element={<StoreInfo />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/line/complete" element={<LineAuthComplete />} />
+          <Route path="/payment/ecpay/result" element={<PaymentResult />} />
           <Route path="/fullMenu" element={isProductionStorefront ? <MaintenanceHome /> : <FullMenu />} />
-          <Route path="/cart" element={isProductionStorefront ? <MaintenanceHome /> : <Cart />} />
-          <Route path="/checkout" element={isProductionStorefront ? <MaintenanceHome /> : <Checkout />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
         </Route>
 
         <Route path="/admin/login" element={<AdminLogin />} />
